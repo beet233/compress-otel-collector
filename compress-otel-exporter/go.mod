@@ -8,8 +8,11 @@ require (
 	go.opentelemetry.io/collector/confmap v0.91.0
 	go.opentelemetry.io/collector/exporter v0.91.0
 	go.opentelemetry.io/collector/pdata v1.0.0
-	// local
-	github.com/beet233/compressotelcollector/model v0.0.1
+)
+
+require (
+	github.com/beet233/compressotelcollector/model v0.0.0-00010101000000-000000000000
+	github.com/emirpasic/gods v1.18.1
 )
 
 require (
@@ -48,6 +51,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace (
-	github.com/beet233/compressotelcollector/model => ./model
-)
+replace github.com/beet233/compressotelcollector/model => ./model

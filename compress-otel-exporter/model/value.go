@@ -13,7 +13,6 @@ const (
 	String
 	Boolean
 	Double
-	// TODO 这里定义了个 Bytes 而不是 Byte 是模仿 otel 里的 AnyValue 的，有待考虑
 	Bytes
 	Object
 	Array
@@ -40,6 +39,33 @@ type StringValue struct {
 
 func (sv StringValue) GetType() ValueType {
 	return String
+}
+
+// BooleanValue 是字符串值类型
+type BooleanValue struct {
+	Data bool
+}
+
+func (bv BooleanValue) GetType() ValueType {
+	return Boolean
+}
+
+// DoubleValue 是字符串值类型
+type DoubleValue struct {
+	Data float64
+}
+
+func (dv DoubleValue) GetType() ValueType {
+	return Double
+}
+
+// BytesValue 是字符串值类型
+type BytesValue struct {
+	Data []byte
+}
+
+func (bv BytesValue) GetType() ValueType {
+	return Bytes
 }
 
 // ObjectValue 是对象值类型
@@ -82,6 +108,39 @@ func ValueComparator(a, b interface{}) int {
 		strv1 := v1.(StringValue)
 		strv2 := v2.(StringValue)
 		return strings.Compare(strv1.Data, strv2.Data)
+	case Boolean:
+		boolv1 := v1.(BooleanValue)
+		boolv2 := v2.(BooleanValue)
+		if boolv1.Data == boolv2.Data {
+			return 0
+		} else if boolv1.Data {
+			return 1
+		} else {
+			return -1
+		}
+	case Double:
+		dbv1 := v1.(DoubleValue)
+		dbv2 := v2.(DoubleValue)
+		if dbv1.Data > dbv2.Data {
+			return 1
+		} else if dbv1.Data == dbv2.Data {
+			return 0
+		} else {
+			return -1
+		}
+	case Bytes:
+		bv1 := v1.(BytesValue)
+		bv2 := v2.(BytesValue)
+		if len(bv1.Data) != len(bv2.Data) {
+			return len(bv1.Data) - len(bv2.Data)
+		}
+		for i := 0; i < len(bv1.Data); i++ {
+			comp := int(bv1.Data[i] - bv2.Data[i])
+			if comp != 0 {
+				return comp
+			}
+		}
+		return 0
 	case Object:
 		objv1 := v1.(ObjectValue)
 		objv2 := v2.(ObjectValue)
