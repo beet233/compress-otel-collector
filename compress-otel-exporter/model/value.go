@@ -10,10 +10,10 @@ type ValueType int
 
 const (
 	Integer ValueType = iota
-	String
 	Boolean
 	Double
 	Bytes
+	String
 	Object
 	Array
 )
