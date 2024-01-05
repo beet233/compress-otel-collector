@@ -28,7 +28,7 @@ type IntegerValue struct {
 	Data int
 }
 
-func (iv IntegerValue) GetType() ValueType {
+func (iv *IntegerValue) GetType() ValueType {
 	return Integer
 }
 
@@ -37,7 +37,7 @@ type StringValue struct {
 	Data string
 }
 
-func (sv StringValue) GetType() ValueType {
+func (sv *StringValue) GetType() ValueType {
 	return String
 }
 
@@ -46,7 +46,7 @@ type BooleanValue struct {
 	Data bool
 }
 
-func (bv BooleanValue) GetType() ValueType {
+func (bv *BooleanValue) GetType() ValueType {
 	return Boolean
 }
 
@@ -55,7 +55,7 @@ type DoubleValue struct {
 	Data float64
 }
 
-func (dv DoubleValue) GetType() ValueType {
+func (dv *DoubleValue) GetType() ValueType {
 	return Double
 }
 
@@ -64,7 +64,7 @@ type BytesValue struct {
 	Data []byte
 }
 
-func (bv BytesValue) GetType() ValueType {
+func (bv *BytesValue) GetType() ValueType {
 	return Bytes
 }
 
@@ -73,7 +73,7 @@ type ObjectValue struct {
 	Data map[string]Value
 }
 
-func (ov ObjectValue) GetType() ValueType {
+func (ov *ObjectValue) GetType() ValueType {
 	return Object
 }
 
@@ -82,7 +82,7 @@ type ArrayValue struct {
 	Data []Value
 }
 
-func (av ArrayValue) GetType() ValueType {
+func (av *ArrayValue) GetType() ValueType {
 	return Array
 }
 
@@ -101,16 +101,16 @@ func ValueComparator(a, b interface{}) int {
 
 	switch type1 {
 	case Integer:
-		intv1 := v1.(IntegerValue)
-		intv2 := v2.(IntegerValue)
+		intv1 := v1.(*IntegerValue)
+		intv2 := v2.(*IntegerValue)
 		return intv1.Data - intv2.Data
 	case String:
-		strv1 := v1.(StringValue)
-		strv2 := v2.(StringValue)
+		strv1 := v1.(*StringValue)
+		strv2 := v2.(*StringValue)
 		return strings.Compare(strv1.Data, strv2.Data)
 	case Boolean:
-		boolv1 := v1.(BooleanValue)
-		boolv2 := v2.(BooleanValue)
+		boolv1 := v1.(*BooleanValue)
+		boolv2 := v2.(*BooleanValue)
 		if boolv1.Data == boolv2.Data {
 			return 0
 		} else if boolv1.Data {
@@ -119,8 +119,8 @@ func ValueComparator(a, b interface{}) int {
 			return -1
 		}
 	case Double:
-		dbv1 := v1.(DoubleValue)
-		dbv2 := v2.(DoubleValue)
+		dbv1 := v1.(*DoubleValue)
+		dbv2 := v2.(*DoubleValue)
 		if dbv1.Data > dbv2.Data {
 			return 1
 		} else if dbv1.Data == dbv2.Data {
@@ -129,8 +129,8 @@ func ValueComparator(a, b interface{}) int {
 			return -1
 		}
 	case Bytes:
-		bv1 := v1.(BytesValue)
-		bv2 := v2.(BytesValue)
+		bv1 := v1.(*BytesValue)
+		bv2 := v2.(*BytesValue)
 		if len(bv1.Data) != len(bv2.Data) {
 			return len(bv1.Data) - len(bv2.Data)
 		}
@@ -142,8 +142,8 @@ func ValueComparator(a, b interface{}) int {
 		}
 		return 0
 	case Object:
-		objv1 := v1.(ObjectValue)
-		objv2 := v2.(ObjectValue)
+		objv1 := v1.(*ObjectValue)
+		objv2 := v2.(*ObjectValue)
 		if len(objv1.Data) != len(objv2.Data) {
 			return len(objv1.Data) - len(objv2.Data)
 		}
@@ -159,8 +159,8 @@ func ValueComparator(a, b interface{}) int {
 		}
 		return 0
 	case Array:
-		av1 := v1.(ArrayValue)
-		av2 := v2.(ArrayValue)
+		av1 := v1.(*ArrayValue)
+		av2 := v2.(*ArrayValue)
 		if len(av1.Data) != len(av2.Data) {
 			return len(av1.Data) - len(av2.Data)
 		}
@@ -178,7 +178,7 @@ func ValueComparator(a, b interface{}) int {
 }
 
 func mapToValue(m map[string]any) Value {
-	result := ObjectValue{Data: map[string]Value{}}
+	result := &ObjectValue{Data: map[string]Value{}}
 	for key, value := range m {
 		result.Data[key] = AnyToValue(value)
 	}
@@ -186,7 +186,7 @@ func mapToValue(m map[string]any) Value {
 }
 
 func arrayToValue(a []any) Value {
-	result := ArrayValue{Data: []Value{}}
+	result := &ArrayValue{Data: []Value{}}
 	for _, value := range a {
 		result.Data = append(result.Data, AnyToValue(value))
 	}
@@ -199,15 +199,15 @@ func AnyToValue(a any) Value {
 	case nil:
 		myValue = nil
 	case string:
-		myValue = StringValue{Data: a.(string)}
+		myValue = &StringValue{Data: a.(string)}
 	case bool:
-		myValue = BooleanValue{Data: a.(bool)}
+		myValue = &BooleanValue{Data: a.(bool)}
 	case float64:
-		myValue = DoubleValue{Data: a.(float64)}
+		myValue = &DoubleValue{Data: a.(float64)}
 	case int64:
-		myValue = IntegerValue{Data: a.(int)}
+		myValue = &IntegerValue{Data: a.(int)}
 	case []byte:
-		myValue = BytesValue{Data: a.([]byte)}
+		myValue = &BytesValue{Data: a.([]byte)}
 	case map[string]any:
 		myValue = mapToValue(a.(map[string]any))
 	case []any:
