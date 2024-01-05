@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/beet233/compressotelcollector/model"
-	"github.com/emirpasic/gods/maps/treemap"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	"log"
+	"os"
+	"strconv"
+	"time"
 )
 
 // No default function for this. It must be implemented
@@ -25,13 +26,16 @@ func pushTraces(
 
 	// 将 td 转化为 model.Value 形式
 	tracesValue := tracesToValue(td)
+	if err != nil {
+		return err
+	}
 
-	// TODO: 将 model.Value 形式的 td 数据完成字典编码，然后打印或保存到文件
-	valuePools := make(map[string]*treemap.Map)
-	stringPool := make(map[string]int)
-	traceModel := model.GetTraceModel()
-	var currentModel, parentModel *model.Definition
-	currentModel = traceModel
+	// 将 model.Value 形式的 td 数据完成字典编码，然后打印或保存到文件
+	file, err := os.Create(strconv.FormatInt(time.Now().UnixNano(), 10) + "_out")
+	err = model.Encode(&tracesValue, model.GetTraceModel(), file)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -44,7 +48,7 @@ func tracesToValue(td ptrace.Traces) model.Value {
 		resourceSpan := td.ResourceSpans().At(i)
 		resourceValue := model.ObjectValue{Data: map[string]model.Value{}}
 		resource := resourceSpan.Resource()
-		resourceValue.Data["attributes"] = mapToValue(resource.Attributes().AsRaw())
+		resourceValue.Data["attributes"] = model.AnyToValue(resource.Attributes().AsRaw())
 		resourceValue.Data["droppedAttributesCount"] = model.IntegerValue{Data: int(resource.DroppedAttributesCount())}
 		resourceSpanValue.Data["resource"] = resourceValue
 		scopeSpansValue := model.ArrayValue{Data: []model.Value{}}
@@ -55,7 +59,7 @@ func tracesToValue(td ptrace.Traces) model.Value {
 			scope := scopeSpan.Scope()
 			scopeValue.Data["name"] = model.StringValue{Data: scope.Name()}
 			scopeValue.Data["version"] = model.StringValue{Data: scope.Version()}
-			scopeValue.Data["attributes"] = mapToValue(scope.Attributes().AsRaw())
+			scopeValue.Data["attributes"] = model.AnyToValue(scope.Attributes().AsRaw())
 			scopeValue.Data["droppedAttributesCount"] = model.IntegerValue{Data: int(scope.DroppedAttributesCount())}
 			scopeSpanValue.Data["scope"] = scopeValue
 			spansValue := model.ArrayValue{Data: []model.Value{}}
@@ -70,7 +74,7 @@ func tracesToValue(td ptrace.Traces) model.Value {
 				spanValue.Data["kind"] = model.IntegerValue{Data: int(span.Kind())}
 				spanValue.Data["startTimeUnixNano"] = model.IntegerValue{Data: int(span.StartTimestamp().AsTime().UnixNano())}
 				spanValue.Data["endTimeUnixNano"] = model.IntegerValue{Data: int(span.EndTimestamp().AsTime().UnixNano())}
-				spanValue.Data["attributes"] = mapToValue(span.Attributes().AsRaw())
+				spanValue.Data["attributes"] = model.AnyToValue(span.Attributes().AsRaw())
 				spanValue.Data["droppedAttributesCount"] = model.IntegerValue{Data: int(span.DroppedAttributesCount())}
 				eventsValue := model.ArrayValue{Data: []model.Value{}}
 				for m := 0; m < span.Events().Len(); m++ {
@@ -78,7 +82,7 @@ func tracesToValue(td ptrace.Traces) model.Value {
 					event := span.Events().At(m)
 					eventValue.Data["timeUnixNano"] = model.IntegerValue{Data: int(event.Timestamp().AsTime().UnixNano())}
 					eventValue.Data["name"] = model.StringValue{Data: event.Name()}
-					eventValue.Data["attributes"] = mapToValue(event.Attributes().AsRaw())
+					eventValue.Data["attributes"] = model.AnyToValue(event.Attributes().AsRaw())
 					eventValue.Data["droppedAttributesCount"] = model.IntegerValue{Data: int(event.DroppedAttributesCount())}
 					eventsValue.Data = append(eventsValue.Data, eventValue)
 				}
@@ -91,7 +95,7 @@ func tracesToValue(td ptrace.Traces) model.Value {
 					linkValue.Data["traceId"] = model.StringValue{Data: link.TraceID().String()}
 					linkValue.Data["spanId"] = model.StringValue{Data: link.SpanID().String()}
 					linkValue.Data["traceState"] = model.StringValue{Data: link.TraceState().AsRaw()}
-					linkValue.Data["attributes"] = mapToValue(link.Attributes().AsRaw())
+					linkValue.Data["attributes"] = model.AnyToValue(link.Attributes().AsRaw())
 					linkValue.Data["droppedAttributesCount"] = model.IntegerValue{Data: int(link.DroppedAttributesCount())}
 					linksValue.Data = append(linksValue.Data, linkValue)
 				}
@@ -114,45 +118,4 @@ func tracesToValue(td ptrace.Traces) model.Value {
 	}
 	tracesValue.Data["resourceSpans"] = resourceSpansValue
 	return tracesValue
-}
-
-func mapToValue(m map[string]any) model.Value {
-	result := model.ObjectValue{Data: map[string]model.Value{}}
-	for key, value := range m {
-		result.Data[key] = anyToValue(value)
-	}
-	return result
-}
-
-func arrayToValue(a []any) model.Value {
-	result := model.ArrayValue{Data: []model.Value{}}
-	for _, value := range a {
-		result.Data = append(result.Data, anyToValue(value))
-	}
-	return result
-}
-
-func anyToValue(a any) model.Value {
-	var myValue model.Value
-	switch a.(type) {
-	case nil:
-		myValue = nil
-	case string:
-		myValue = model.StringValue{Data: a.(string)}
-	case bool:
-		myValue = model.BooleanValue{Data: a.(bool)}
-	case float64:
-		myValue = model.DoubleValue{Data: a.(float64)}
-	case int64:
-		myValue = model.IntegerValue{Data: a.(int)}
-	case []byte:
-		myValue = model.BytesValue{Data: a.([]byte)}
-	case map[string]any:
-		myValue = mapToValue(a.(map[string]any))
-	case []any:
-		myValue = arrayToValue(a.([]any))
-	default:
-		log.Fatalln("Unknown value: ", a)
-	}
-	return myValue
 }

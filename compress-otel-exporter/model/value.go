@@ -176,3 +176,44 @@ func ValueComparator(a, b interface{}) int {
 		return 0
 	}
 }
+
+func mapToValue(m map[string]any) Value {
+	result := ObjectValue{Data: map[string]Value{}}
+	for key, value := range m {
+		result.Data[key] = AnyToValue(value)
+	}
+	return result
+}
+
+func arrayToValue(a []any) Value {
+	result := ArrayValue{Data: []Value{}}
+	for _, value := range a {
+		result.Data = append(result.Data, AnyToValue(value))
+	}
+	return result
+}
+
+func AnyToValue(a any) Value {
+	var myValue Value
+	switch a.(type) {
+	case nil:
+		myValue = nil
+	case string:
+		myValue = StringValue{Data: a.(string)}
+	case bool:
+		myValue = BooleanValue{Data: a.(bool)}
+	case float64:
+		myValue = DoubleValue{Data: a.(float64)}
+	case int64:
+		myValue = IntegerValue{Data: a.(int)}
+	case []byte:
+		myValue = BytesValue{Data: a.([]byte)}
+	case map[string]any:
+		myValue = mapToValue(a.(map[string]any))
+	case []any:
+		myValue = arrayToValue(a.([]any))
+	default:
+		log.Fatalln("Unknown value: ", a)
+	}
+	return myValue
+}
