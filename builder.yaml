@@ -24,3 +24,4 @@ receivers:
 
 replaces:
   - github.com/beet233/compressotelexporter => ../compress-otel-exporter
+  - github.com/beet233/compressotelcollector/model v0.0.1 => ../compress-otel-exporter/model

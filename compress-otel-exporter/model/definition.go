@@ -10,20 +10,20 @@ type Definition struct {
 
 func GetTraceModel() *Definition {
 	return &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
-		"resourceSpans": {Type: Array, Nullable: false, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
+		"resourceSpans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 			"resource": {Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
 				// 以属性维度多重池化信息
 				"attributes":             {Type: Object, Nullable: true, Pooled: true},
 				"droppedAttributesCount": {Type: Integer, Nullable: true},
 			}},
-			"scopeSpans": {Type: Array, Nullable: false, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
+			"scopeSpans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 				"scope": {Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
 					"name":                   {Type: String, Nullable: true},
 					"version":                {Type: String, Nullable: true},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},
 				}},
-				"spans": {Type: Array, Nullable: false, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
+				"spans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 					"traceId":                {Type: String, Nullable: false},
 					"spanId":                 {Type: String, Nullable: false},
 					"traceState":             {Type: String, Nullable: true},
