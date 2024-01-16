@@ -32,7 +32,7 @@ func pushTraces(
 
 	// 将 model.Value 形式的 td 数据完成字典编码，然后打印或保存到文件
 	file, err := os.Create(strconv.FormatInt(time.Now().UnixNano(), 10) + "_out")
-	err = model.Encode(tracesValue, model.GetTraceModel(), file)
+	err = Encode(tracesValue, model.GetTraceModel(), file)
 	if err != nil {
 		return err
 	}

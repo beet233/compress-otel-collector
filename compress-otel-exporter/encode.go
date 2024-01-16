@@ -1,23 +1,22 @@
-package model
+package compressotelexporter
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"github.com/beet233/compressotelcollector/model"
 	"github.com/emirpasic/gods/maps/treemap"
 	"io"
 )
 
 const (
-	leb128Enabled               = true
-	stringPoolEnabled           = true
 	initialCompressedBufferSize = 1024
 	typeConflictErrMsg          = "value & definition type conflict"
 	notNullableErrMsg           = "value is not nullable"
 )
 
 // Encode 将 Value 根据 Definition 进行编码，和字典一起编入 io.Writer
-func Encode(val Value, def *Definition, out io.Writer) (err error) {
+func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	valuePools := make(map[string]*treemap.Map)
 	stringPool := make(map[string]int)
 	w := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
@@ -32,7 +31,7 @@ func Encode(val Value, def *Definition, out io.Writer) (err error) {
 	return nil
 }
 
-func innerEncode(val Value, def *Definition, myName string, valuePools map[string]*treemap.Map, stringPool map[string]int, buf *bytes.Buffer) (err error) {
+func innerEncode(val model.Value, def *model.Definition, myName string, valuePools map[string]*treemap.Map, stringPool map[string]int, buf *bytes.Buffer) (err error) {
 	if def.Nullable {
 		if val == nil || isNullValue(val) {
 			// 编个 bit 0，由于 golang 即使 boolean 也是用一整个 byte 的，所以只好如此
@@ -50,29 +49,29 @@ func innerEncode(val Value, def *Definition, myName string, valuePools map[strin
 		return errors.New(typeConflictErrMsg)
 	}
 	switch val.(type) {
-	case *IntegerValue:
-		err := encodeInt(val.(*IntegerValue).Data, buf)
+	case *model.IntegerValue:
+		err := encodeInt(val.(*model.IntegerValue).Data, buf)
 		if err != nil {
 			return err
 		}
-	case *BooleanValue:
-		err := binary.Write(buf, binary.LittleEndian, val.(*BooleanValue).Data)
+	case *model.BooleanValue:
+		err := binary.Write(buf, binary.LittleEndian, val.(*model.BooleanValue).Data)
 		if err != nil {
 			return err
 		}
-	case *DoubleValue:
-		err := binary.Write(buf, binary.LittleEndian, val.(*DoubleValue).Data)
+	case *model.DoubleValue:
+		err := binary.Write(buf, binary.LittleEndian, val.(*model.DoubleValue).Data)
 		if err != nil {
 			return err
 		}
-	case *BytesValue:
-		_, err := buf.Write(val.(*BytesValue).Data)
+	case *model.BytesValue:
+		_, err := buf.Write(val.(*model.BytesValue).Data)
 		if err != nil {
 			return err
 		}
-	case *StringValue:
-		strv := val.(*StringValue).Data
-		if stringPoolEnabled {
+	case *model.StringValue:
+		strv := val.(*model.StringValue).Data
+		if MyConfig.StringPoolEnabled {
 			if _, ok := stringPool[strv]; !ok {
 				stringPool[strv] = len(stringPool)
 			}
@@ -90,10 +89,10 @@ func innerEncode(val Value, def *Definition, myName string, valuePools map[strin
 				return err
 			}
 		}
-	case *ObjectValue:
+	case *model.ObjectValue:
 		if def.Pooled {
 			if _, ok := valuePools[myName]; !ok {
-				valuePools[myName] = treemap.NewWith(ValueComparator)
+				valuePools[myName] = treemap.NewWith(model.ValueComparator)
 			}
 			myNameMap := valuePools[myName]
 			if _, ok := myNameMap.Get(val); !ok {
@@ -105,7 +104,7 @@ func innerEncode(val Value, def *Definition, myName string, valuePools map[strin
 				return err
 			}
 		}
-		objv := val.(*ObjectValue).Data
+		objv := val.(*model.ObjectValue).Data
 		for fieldName, fieldDef := range def.Fields {
 			innerVal := objv[fieldName]
 			err := innerEncode(innerVal, fieldDef, fieldName, valuePools, stringPool, buf)
@@ -113,10 +112,10 @@ func innerEncode(val Value, def *Definition, myName string, valuePools map[strin
 				return err
 			}
 		}
-	case *ArrayValue:
+	case *model.ArrayValue:
 		if def.Pooled {
 			if _, ok := valuePools[myName]; !ok {
-				valuePools[myName] = treemap.NewWith(ValueComparator)
+				valuePools[myName] = treemap.NewWith(model.ValueComparator)
 			}
 			myNameMap := valuePools[myName]
 			if _, ok := myNameMap.Get(val); !ok {
@@ -128,7 +127,7 @@ func innerEncode(val Value, def *Definition, myName string, valuePools map[strin
 				return err
 			}
 		}
-		arrv := val.(*ArrayValue).Data
+		arrv := val.(*model.ArrayValue).Data
 		err := encodeInt(len(arrv), buf)
 		if err != nil {
 			return err
@@ -144,22 +143,22 @@ func innerEncode(val Value, def *Definition, myName string, valuePools map[strin
 }
 
 // val can't be nil
-func isNullValue(val Value) bool {
+func isNullValue(val model.Value) bool {
 	switch val.(type) {
-	case *IntegerValue:
-		return val.(*IntegerValue).Data == 0
-	case *BytesValue:
-		return len(val.(*BytesValue).Data) == 0
-	case *StringValue:
-		return len(val.(*StringValue).Data) == 0
-	case *ArrayValue:
-		return len(val.(*ArrayValue).Data) == 0
+	case *model.IntegerValue:
+		return val.(*model.IntegerValue).Data == 0
+	case *model.BytesValue:
+		return len(val.(*model.BytesValue).Data) == 0
+	case *model.StringValue:
+		return len(val.(*model.StringValue).Data) == 0
+	case *model.ArrayValue:
+		return len(val.(*model.ArrayValue).Data) == 0
 	}
 	return false
 }
 
 func encodeInt(val int, buf *bytes.Buffer) error {
-	if leb128Enabled {
+	if MyConfig.Leb128Enabled {
 		for {
 			// Get the 7 least significant bits of the value.
 			byteVal := byte(val & 0x7F)

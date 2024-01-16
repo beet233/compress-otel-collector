@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/beet233/compressotelcollector/model v0.0.1
+	github.com/emirpasic/gods v1.18.1
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector/component v0.91.0
 	go.opentelemetry.io/collector/confmap v0.91.0
@@ -14,7 +15,6 @@ require (
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
@@ -48,4 +48,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/beet233/compressotelcollector/model v0.0.1 => ./model
+replace github.com/beet233/compressotelcollector/model v0.0.1 => ../model

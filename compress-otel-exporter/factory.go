@@ -45,6 +45,10 @@ func createTracesExporter(
 	cfg component.Config,
 ) (exporter.Traces, error) {
 
+	// 赋给全局 config，主要是 pushTraces 本身并不携带 config 信息
+	MyConfig.Leb128Enabled = cfg.(*config).Leb128Enabled
+	MyConfig.StringPoolEnabled = cfg.(*config).StringPoolEnabled
+
 	return exporterhelper.NewTracesExporter(ctx, set, cfg,
 		pushTraces,
 		//	The parameters below are optional. Uncomment any as you need.
