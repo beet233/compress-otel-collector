@@ -2,7 +2,6 @@ package compressotelexporter
 
 import (
 	"context"
-	"fmt"
 	"github.com/beet233/compressotelcollector/model"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"os"
@@ -16,13 +15,30 @@ func pushTraces(
 	ctx context.Context,
 	td ptrace.Traces,
 ) (err error) {
-	// marshaler := ptrace.ProtoMarshaler{}
-	marshaler := ptrace.JSONMarshaler{}
-	buf, err := marshaler.MarshalTraces(td)
+	protoMarshaler := ptrace.ProtoMarshaler{}
+	buf, err := protoMarshaler.MarshalTraces(td)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(buf))
+
+	fileProto, err := os.Create(strconv.FormatInt(time.Now().UnixNano(), 10) + "_out_proto")
+	_, err = fileProto.Write(buf)
+	if err != nil {
+		return err
+	}
+
+	jsonMarshaler := ptrace.JSONMarshaler{}
+	buf, err = jsonMarshaler.MarshalTraces(td)
+	if err != nil {
+		return err
+	}
+
+	fileJSON, err := os.Create(strconv.FormatInt(time.Now().UnixNano(), 10) + "_out_json")
+	_, err = fileJSON.Write(buf)
+	if err != nil {
+		return err
+	}
+	// fmt.Println(string(buf))
 
 	// 将 td 转化为 model.Value 形式
 	tracesValue := tracesToValue(td)

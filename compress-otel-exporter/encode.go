@@ -18,20 +18,67 @@ const (
 // Encode 将 Value 根据 Definition 进行编码，和字典一起编入 io.Writer
 func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	valuePools := make(map[string]*treemap.Map)
+	valueEncodePools := make(map[string]map[int]*bytes.Buffer)
 	stringPool := make(map[string]int)
-	w := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
-	err = innerEncode(val, def, "", valuePools, stringPool, w)
+	dataBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+	err = innerEncode(val, def, "", valuePools, valueEncodePools, stringPool, dataBuffer)
 	if err != nil {
 		return
 	}
-	_, err = out.Write(w.Bytes())
+	// 编码 valuePools 以及 stringPool 进 metaBuffer
+	metaBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+	// 解析需要的是 index -> value，所以编码进去的应该是 reverse map
+	// 先编码 stringPool
+	strings := sortMapByValue(stringPool)
+	for i := 0; i < len(strings); i++ {
+		err = encodeInt(len(strings[i]), metaBuffer)
+		if err != nil {
+			return err
+		}
+		_, err = metaBuffer.WriteString(strings[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	// 编码 valuePools 顺序
+	// fmt.Println("valuePools 顺序：")
+	// for _, field := range model.GetTopologicalTraceModelFields() {
+	// 	fmt.Print(field, ",")
+	// }
+	// fmt.Println()
+
+	for _, field := range model.GetTopologicalTraceModelFields() {
+		valuePool, exist := valuePools[field]
+		if exist {
+			_, err = metaBuffer.WriteString(field)
+			if err != nil {
+				return err
+			}
+			values := sortTreeMapByValue(valuePool)
+			for i := 0; i < len(values); i++ {
+				_, err = metaBuffer.Write(valueEncodePools[field][i].Bytes())
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	_, err = out.Write(metaBuffer.Bytes())
+	if err != nil {
+		return
+	}
+	_, err = out.Write(dataBuffer.Bytes())
 	if err != nil {
 		return
 	}
 	return nil
 }
 
-func innerEncode(val model.Value, def *model.Definition, myName string, valuePools map[string]*treemap.Map, stringPool map[string]int, buf *bytes.Buffer) (err error) {
+// 传承层级 myName 作为 valuePools 的 key，如 "resourceSpans item resource attributes" 中间用一个空格
+func innerEncode(val model.Value, def *model.Definition, myName string, valuePools map[string]*treemap.Map, valueEncodePools map[string]map[int]*bytes.Buffer, stringPool map[string]int, buf *bytes.Buffer) (err error) {
+
 	if def.Nullable {
 		if val == nil || isNullValue(val) {
 			// 编个 bit 0，由于 golang 即使 boolean 也是用一整个 byte 的，所以只好如此
@@ -65,7 +112,11 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 			return err
 		}
 	case *model.BytesValue:
-		_, err := buf.Write(val.(*model.BytesValue).Data)
+		err := encodeInt(len(val.(*model.BytesValue).Data), buf)
+		if err != nil {
+			return err
+		}
+		_, err = buf.Write(val.(*model.BytesValue).Data)
 		if err != nil {
 			return err
 		}
@@ -90,6 +141,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 			}
 		}
 	case *model.ObjectValue:
+
+		needEncode := false
 		if def.Pooled {
 			if _, ok := valuePools[myName]; !ok {
 				valuePools[myName] = treemap.NewWith(model.ValueComparator)
@@ -97,22 +150,53 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 			myNameMap := valuePools[myName]
 			if _, ok := myNameMap.Get(val); !ok {
 				myNameMap.Put(val, myNameMap.Size())
+				// 如果池化且第一次加入池子，则需要编码
+				needEncode = true
 			}
-			index, _ := myNameMap.Get(val)
+		} else {
+			// 如果没池化则需要编码
+			needEncode = true
+		}
+
+		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+
+		if needEncode {
+			objv := val.(*model.ObjectValue).Data
+			if len(myName) > 0 {
+				myName = myName + " "
+			}
+			for fieldName, fieldDef := range def.Fields {
+				innerVal := objv[fieldName]
+				err := innerEncode(innerVal, fieldDef, myName+fieldName, valuePools, valueEncodePools, stringPool, tempBuffer)
+				if err != nil {
+					return err
+				}
+			}
+			if len(myName) > 0 {
+				myName = myName[:len(myName)-1]
+			}
+		}
+
+		if def.Pooled {
+			index, _ := valuePools[myName].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
-		}
-		objv := val.(*model.ObjectValue).Data
-		for fieldName, fieldDef := range def.Fields {
-			innerVal := objv[fieldName]
-			err := innerEncode(innerVal, fieldDef, fieldName, valuePools, stringPool, buf)
+			// 存储 tempBuffer 的结果到 map
+			if _, ok := valueEncodePools[myName]; !ok {
+				valueEncodePools[myName] = make(map[int]*bytes.Buffer)
+			}
+			valueEncodePools[myName][index.(int)] = tempBuffer
+		} else {
+			_, err := buf.Write(tempBuffer.Bytes())
 			if err != nil {
 				return err
 			}
 		}
 	case *model.ArrayValue:
+
+		needEncode := false
 		if def.Pooled {
 			if _, ok := valuePools[myName]; !ok {
 				valuePools[myName] = treemap.NewWith(model.ValueComparator)
@@ -120,20 +204,49 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 			myNameMap := valuePools[myName]
 			if _, ok := myNameMap.Get(val); !ok {
 				myNameMap.Put(val, myNameMap.Size())
+				// 如果池化且第一次加入池子，则需要编码
+				needEncode = true
 			}
-			index, _ := myNameMap.Get(val)
+		} else {
+			// 如果没池化则需要编码
+			needEncode = true
+		}
+
+		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+
+		if needEncode {
+			arrv := val.(*model.ArrayValue).Data
+			err := encodeInt(len(arrv), buf)
+			if err != nil {
+				return err
+			}
+			if len(myName) > 0 {
+				myName = myName + " "
+			}
+			for _, item := range arrv {
+				err := innerEncode(item, def.ItemDefinition, myName+"item", valuePools, valueEncodePools, stringPool, tempBuffer)
+				if err != nil {
+					return err
+				}
+			}
+			if len(myName) > 0 {
+				myName = myName[:len(myName)-1]
+			}
+		}
+
+		if def.Pooled {
+			index, _ := valuePools[myName].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
-		}
-		arrv := val.(*model.ArrayValue).Data
-		err := encodeInt(len(arrv), buf)
-		if err != nil {
-			return err
-		}
-		for _, item := range arrv {
-			err := innerEncode(item, def.ItemDefinition, "", valuePools, stringPool, buf)
+			// 存储 tempBuffer 的结果到 map
+			if _, ok := valueEncodePools[myName]; !ok {
+				valueEncodePools[myName] = make(map[int]*bytes.Buffer)
+			}
+			valueEncodePools[myName][index.(int)] = tempBuffer
+		} else {
+			_, err := buf.Write(tempBuffer.Bytes())
 			if err != nil {
 				return err
 			}
@@ -180,4 +293,37 @@ func encodeInt(val int, buf *bytes.Buffer) error {
 	} else {
 		return binary.Write(buf, binary.LittleEndian, int64(val))
 	}
+}
+
+// 遍历 map 来重新构建一个 map[int]string，再从 0~size-1 取结果，复杂度只有 O(N)
+func sortMapByValue(inputMap map[string]int) []string {
+
+	var sortedKeys []string
+
+	tempMap := make(map[int]string)
+	for key, value := range inputMap {
+		tempMap[value] = key
+	}
+
+	for i := 0; i < len(tempMap); i++ {
+		sortedKeys = append(sortedKeys, tempMap[i])
+	}
+
+	return sortedKeys
+}
+
+func sortTreeMapByValue(inputMap *treemap.Map) []model.Value {
+
+	var sortedValues []model.Value
+
+	tempMap := make(map[int]model.Value)
+	inputMap.Each(func(key interface{}, value interface{}) {
+		tempMap[value.(int)] = key.(model.Value)
+	})
+
+	for i := 0; i < len(tempMap); i++ {
+		sortedValues = append(sortedValues, tempMap[i])
+	}
+
+	return sortedValues
 }
