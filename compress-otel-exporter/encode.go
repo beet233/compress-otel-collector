@@ -7,6 +7,7 @@ import (
 	"github.com/beet233/compressotelcollector/model"
 	"github.com/emirpasic/gods/maps/treemap"
 	"io"
+	"sort"
 )
 
 const (
@@ -162,16 +163,33 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 
 		if needEncode {
 			objv := val.(*model.ObjectValue).Data
+			if len(myName) >= len("attributes") && myName[len(myName)-len("attributes"):] == "attributes" {
+				err := innerFreeMapEncode(objv, stringPool, tempBuffer)
+				if err != nil {
+					return nil
+				}
+			}
 			if len(myName) > 0 {
 				myName = myName + " "
 			}
-			for fieldName, fieldDef := range def.Fields {
+			// 这里有问题，编码各个 field 的顺序是随机的....
+			// for fieldName, fieldDef := range def.Fields {
+			// 	innerVal := objv[fieldName]
+			// 	err := innerEncode(innerVal, fieldDef, myName+fieldName, valuePools, valueEncodePools, stringPool, tempBuffer)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// }
+			// 改成按字典序吧
+			for _, fieldName := range getSortedKeys(def.Fields) {
+				fieldDef := def.Fields[fieldName]
 				innerVal := objv[fieldName]
 				err := innerEncode(innerVal, fieldDef, myName+fieldName, valuePools, valueEncodePools, stringPool, tempBuffer)
 				if err != nil {
 					return err
 				}
 			}
+
 			if len(myName) > 0 {
 				myName = myName[:len(myName)-1]
 			}
@@ -255,6 +273,116 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 	return nil
 }
 
+// 将自由的 map （其实只有 attributes 及其内部）编码进 buf，过程中 string 同样需要处理入池
+func innerFreeMapEncode(freeMap map[string]model.Value, stringPool map[string]int, buf *bytes.Buffer) error {
+	// freeMap 中我们不需要关心遍历 map 的顺序
+	for key, value := range freeMap {
+		if _, exist := stringPool[key]; !exist {
+			stringPool[key] = len(stringPool)
+		}
+		err := encodeInt(stringPool[key], buf)
+		if err != nil {
+			return err
+		}
+		// 一个是否为 null 的标记位
+		if value == nil {
+			err := binary.Write(buf, binary.LittleEndian, false)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := binary.Write(buf, binary.LittleEndian, true)
+			if err != nil {
+				return err
+			}
+			err = encodeInt(int(value.GetType()), buf)
+			if err != nil {
+				return err
+			}
+			err = innerFreeValueEncode(value, stringPool, buf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func innerFreeValueEncode(value model.Value, stringPool map[string]int, buf *bytes.Buffer) error {
+	switch value.(type) {
+	case *model.IntegerValue:
+		err := encodeInt(value.(*model.IntegerValue).Data, buf)
+		if err != nil {
+			return err
+		}
+	case *model.BooleanValue:
+		err := binary.Write(buf, binary.LittleEndian, value.(*model.BooleanValue).Data)
+		if err != nil {
+			return err
+		}
+	case *model.DoubleValue:
+		err := binary.Write(buf, binary.LittleEndian, value.(*model.DoubleValue).Data)
+		if err != nil {
+			return err
+		}
+	case *model.BytesValue:
+		err := encodeInt(len(value.(*model.BytesValue).Data), buf)
+		if err != nil {
+			return err
+		}
+		_, err = buf.Write(value.(*model.BytesValue).Data)
+		if err != nil {
+			return err
+		}
+	case *model.StringValue:
+		strv := value.(*model.StringValue).Data
+		if MyConfig.StringPoolEnabled {
+			if _, ok := stringPool[strv]; !ok {
+				stringPool[strv] = len(stringPool)
+			}
+			err := encodeInt(stringPool[strv], buf)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := encodeInt(len(strv), buf)
+			if err != nil {
+				return err
+			}
+			_, err = buf.WriteString(strv)
+			if err != nil {
+				return err
+			}
+		}
+	case *model.ObjectValue:
+		objv := value.(*model.ObjectValue).Data
+		err := innerFreeMapEncode(objv, stringPool, buf)
+		if err != nil {
+			return err
+		}
+	case *model.ArrayValue:
+		arrv := value.(*model.ArrayValue).Data
+		err := encodeInt(len(arrv), buf)
+		if err != nil {
+			return err
+		}
+		// 编码数组内元素的类型
+		if len(arrv) > 0 {
+			err := encodeInt(int(arrv[0].GetType()), buf)
+			if err != nil {
+				return err
+			}
+		}
+		for i := 0; i < len(arrv); i++ {
+			err := innerFreeValueEncode(arrv[i], stringPool, buf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // val can't be nil
 func isNullValue(val model.Value) bool {
 	switch val.(type) {
@@ -326,4 +454,16 @@ func sortTreeMapByValue(inputMap *treemap.Map) []model.Value {
 	}
 
 	return sortedValues
+}
+
+func getSortedKeys(m map[string]*model.Definition) []string {
+	// 数组默认长度为map长度,后面append时,不需要重新申请内存和拷贝,效率很高
+	j := 0
+	keys := make([]string, len(m))
+	for k := range m {
+		keys[j] = k
+		j++
+	}
+	sort.Strings(keys)
+	return keys
 }
