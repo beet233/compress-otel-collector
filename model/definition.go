@@ -10,6 +10,7 @@ type Definition struct {
 	Type           ValueType
 	Nullable       bool
 	Pooled         bool                   // basic type like int, string will never be pooled, only use with Array and Object
+	DiffEncode     bool                   // for int, use difference with previous value of this field to encode
 	Fields         map[string]*Definition // need Fields when Type is Object
 	ItemDefinition *Definition            // need ItemDefinition when Type is Array
 }
@@ -30,26 +31,26 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 				"droppedAttributesCount": {Type: Integer, Nullable: true},
 			}},
 			"spans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
-				"traceId":                {Type: String, Nullable: false},
-				"spanId":                 {Type: String, Nullable: false},
+				"traceId":                {Type: Bytes, Nullable: false},
+				"spanId":                 {Type: Bytes, Nullable: false},
 				"traceState":             {Type: String, Nullable: true},
-				"parentSpanId":           {Type: String, Nullable: true},
+				"parentSpanId":           {Type: Bytes, Nullable: true},
 				"name":                   {Type: String, Nullable: false},
 				"kind":                   {Type: Integer, Nullable: true},
-				"startTimeUnixNano":      {Type: Integer, Nullable: false},
-				"endTimeUnixNano":        {Type: Integer, Nullable: false},
+				"startTimeUnixNano":      {Type: Integer, Nullable: false, DiffEncode: true},
+				"endTimeUnixNano":        {Type: Integer, Nullable: false, DiffEncode: true},
 				"attributes":             {Type: Object, Nullable: true, Pooled: true},
 				"droppedAttributesCount": {Type: Integer, Nullable: true},
 				"events": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
-					"timeUnixNano":           {Type: Integer, Nullable: true},
+					"timeUnixNano":           {Type: Integer, Nullable: true, DiffEncode: true},
 					"name":                   {Type: String, Nullable: true},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},
 				}}},
 				"droppedEventsCount": {Type: Integer, Nullable: true},
 				"links": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
-					"traceId":                {Type: String, Nullable: false},
-					"spanId":                 {Type: String, Nullable: false},
+					"traceId":                {Type: Bytes, Nullable: false},
+					"spanId":                 {Type: Bytes, Nullable: false},
 					"traceState":             {Type: String, Nullable: true},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},

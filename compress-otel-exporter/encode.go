@@ -18,11 +18,13 @@ const (
 
 // Encode 将 Value 根据 Definition 进行编码，和字典一起编入 io.Writer
 func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
+	// 作为时间戳等状态的容器
+	status := make(map[string]any)
 	valuePools := make(map[string]*treemap.Map)
 	valueEncodePools := make(map[string]map[int]*bytes.Buffer)
 	stringPool := make(map[string]int)
 	dataBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
-	err = innerEncode(val, def, "", valuePools, valueEncodePools, stringPool, dataBuffer)
+	err = innerEncode(val, def, "", status, valuePools, valueEncodePools, stringPool, dataBuffer)
 	if err != nil {
 		return
 	}
@@ -78,7 +80,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 }
 
 // 传承层级 myName 作为 valuePools 的 key，如 "resourceSpans item resource attributes" 中间用一个空格
-func innerEncode(val model.Value, def *model.Definition, myName string, valuePools map[string]*treemap.Map, valueEncodePools map[string]map[int]*bytes.Buffer, stringPool map[string]int, buf *bytes.Buffer) (err error) {
+func innerEncode(val model.Value, def *model.Definition, myName string, status map[string]any, valuePools map[string]*treemap.Map, valueEncodePools map[string]map[int]*bytes.Buffer, stringPool map[string]int, buf *bytes.Buffer) (err error) {
 
 	if def.Nullable {
 		if val == nil || isNullValue(val) {
@@ -88,6 +90,12 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 				return err
 			}
 			return nil
+		} else {
+			// 编个 bit 1
+			err := binary.Write(buf, binary.LittleEndian, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if val == nil {
@@ -98,9 +106,25 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 	}
 	switch val.(type) {
 	case *model.IntegerValue:
-		err := encodeInt(val.(*model.IntegerValue).Data, buf)
-		if err != nil {
-			return err
+		intv := val.(*model.IntegerValue).Data
+		if def.DiffEncode {
+			if _, exist := status[myName]; !exist {
+				status[myName] = intv
+				err := encodeInt(intv, buf)
+				if err != nil {
+					return err
+				}
+			} else {
+				err := encodeInt(intv-status[myName].(int), buf)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			err := encodeInt(intv, buf)
+			if err != nil {
+				return err
+			}
 		}
 	case *model.BooleanValue:
 		err := binary.Write(buf, binary.LittleEndian, val.(*model.BooleanValue).Data)
@@ -184,7 +208,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 			for _, fieldName := range getSortedKeys(def.Fields) {
 				fieldDef := def.Fields[fieldName]
 				innerVal := objv[fieldName]
-				err := innerEncode(innerVal, fieldDef, myName+fieldName, valuePools, valueEncodePools, stringPool, tempBuffer)
+				err := innerEncode(innerVal, fieldDef, myName+fieldName, status, valuePools, valueEncodePools, stringPool, tempBuffer)
 				if err != nil {
 					return err
 				}
@@ -242,7 +266,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, valuePoo
 				myName = myName + " "
 			}
 			for _, item := range arrv {
-				err := innerEncode(item, def.ItemDefinition, myName+"item", valuePools, valueEncodePools, stringPool, tempBuffer)
+				err := innerEncode(item, def.ItemDefinition, myName+"item", status, valuePools, valueEncodePools, stringPool, tempBuffer)
 				if err != nil {
 					return err
 				}

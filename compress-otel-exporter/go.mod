@@ -5,6 +5,8 @@ go 1.20
 require (
 	github.com/beet233/compressotelcollector/model v0.0.1
 	github.com/emirpasic/gods v1.18.1
+	github.com/klauspost/compress v1.17.4
+	github.com/klauspost/pgzip v1.2.6
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector/component v0.91.0
 	go.opentelemetry.io/collector/confmap v0.91.0
