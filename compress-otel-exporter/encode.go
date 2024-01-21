@@ -137,14 +137,61 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			return err
 		}
 	case *model.BytesValue:
-		err := encodeInt(len(val.(*model.BytesValue).Data), buf)
-		if err != nil {
-			return err
+
+		needEncode := false
+
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
+			}
+			if _, ok := valuePools[poolId]; !ok {
+				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			}
+			myPool := valuePools[poolId]
+			if _, ok := myPool.Get(val); !ok {
+				myPool.Put(val, myPool.Size())
+				needEncode = true
+			}
+		} else {
+			needEncode = true
 		}
-		_, err = buf.Write(val.(*model.BytesValue).Data)
-		if err != nil {
-			return err
+
+		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+
+		if needEncode {
+			err := encodeInt(len(val.(*model.BytesValue).Data), tempBuffer)
+			if err != nil {
+				return err
+			}
+			_, err = tempBuffer.Write(val.(*model.BytesValue).Data)
+			if err != nil {
+				return err
+			}
 		}
+
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
+			}
+			index, _ := valuePools[poolId].Get(val)
+			err := encodeInt(index.(int), buf)
+			if err != nil {
+				return err
+			}
+			// 存储 tempBuffer 的结果到 map
+			if _, ok := valueEncodePools[poolId]; !ok {
+				valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
+			}
+			valueEncodePools[poolId][index.(int)] = tempBuffer
+		} else {
+			_, err := buf.Write(tempBuffer.Bytes())
+			if err != nil {
+				return err
+			}
+		}
+
 	case *model.StringValue:
 		strv := val.(*model.StringValue).Data
 		if MyConfig.StringPoolEnabled {
@@ -258,7 +305,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 
 		if needEncode {
 			arrv := val.(*model.ArrayValue).Data
-			err := encodeInt(len(arrv), buf)
+			err := encodeInt(len(arrv), tempBuffer)
 			if err != nil {
 				return err
 			}
@@ -299,6 +346,11 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 
 // 将自由的 map （其实只有 attributes 及其内部）编码进 buf，过程中 string 同样需要处理入池
 func innerFreeMapEncode(freeMap map[string]model.Value, stringPool map[string]int, buf *bytes.Buffer) error {
+	// freeMap 需要有 size，而有 def 的不需要
+	err := encodeInt(len(freeMap), buf)
+	if err != nil {
+		return err
+	}
 	// freeMap 中我们不需要关心遍历 map 的顺序
 	for key, value := range freeMap {
 		if _, exist := stringPool[key]; !exist {

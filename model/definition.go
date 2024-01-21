@@ -10,6 +10,8 @@ type Definition struct {
 	Type           ValueType
 	Nullable       bool
 	Pooled         bool                   // basic type like int, string will never be pooled, only use with Array and Object
+	SharePooled    bool                   // share pool with other field
+	SharePoolId    string                 // shared pool id
 	DiffEncode     bool                   // for int, use difference with previous value of this field to encode
 	Fields         map[string]*Definition // need Fields when Type is Object
 	ItemDefinition *Definition            // need ItemDefinition when Type is Array
@@ -31,10 +33,10 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 				"droppedAttributesCount": {Type: Integer, Nullable: true},
 			}},
 			"spans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
-				"traceId":                {Type: Bytes, Nullable: false},
-				"spanId":                 {Type: Bytes, Nullable: false},
+				"traceId":                {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "traceId"},
+				"spanId":                 {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "spanId"},
 				"traceState":             {Type: String, Nullable: true},
-				"parentSpanId":           {Type: Bytes, Nullable: true},
+				"parentSpanId":           {Type: Bytes, Nullable: true, SharePooled: true, SharePoolId: "spanId"},
 				"name":                   {Type: String, Nullable: false},
 				"kind":                   {Type: Integer, Nullable: true},
 				"startTimeUnixNano":      {Type: Integer, Nullable: false, DiffEncode: true},
@@ -49,8 +51,8 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 				}}},
 				"droppedEventsCount": {Type: Integer, Nullable: true},
 				"links": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
-					"traceId":                {Type: Bytes, Nullable: false},
-					"spanId":                 {Type: Bytes, Nullable: false},
+					"traceId":                {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "traceId"},
+					"spanId":                 {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "spanId"},
 					"traceState":             {Type: String, Nullable: true},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},
@@ -99,30 +101,32 @@ func getTopologicalFieldsByDefinition(definition *Definition) []string {
 // string 无序处理，序列化时最优先序列化 stringPool
 func dfs(definition *Definition, myName string, result []string) []string {
 	if definition != nil {
+		if len(myName) > 0 {
+			myName = myName + " "
+		}
 		switch definition.Type {
 		case Object:
-			if len(myName) > 0 {
-				myName = myName + " "
-			}
 			for fieldName, fieldDef := range definition.Fields {
 				result = dfs(fieldDef, myName+fieldName, result)
 			}
-			if len(myName) > 0 {
-				myName = myName[:len(myName)-1]
-			}
-			if definition.Pooled {
-				result = append(result, myName)
-			}
 		case Array:
-			if len(myName) > 0 {
-				myName = myName + " "
-			}
 			result = dfs(definition.ItemDefinition, myName+"item", result)
-			if len(myName) > 0 {
-				myName = myName[:len(myName)-1]
+		}
+		if len(myName) > 0 {
+			myName = myName[:len(myName)-1]
+		}
+		if definition.Pooled {
+			result = append(result, myName)
+		}
+		if definition.SharePooled {
+			exist := false
+			for _, name := range result {
+				if name == definition.SharePoolId {
+					exist = true
+				}
 			}
-			if definition.Pooled {
-				result = append(result, myName)
+			if !exist {
+				result = append(result, definition.SharePoolId)
 			}
 		}
 	}
