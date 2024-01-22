@@ -77,7 +77,7 @@ func (ov *ObjectValue) GetType() ValueType {
 	return Object
 }
 
-// ArrayValue 是对象数组值类型
+// ArrayValue 是数组值类型
 type ArrayValue struct {
 	Data []Value
 }

@@ -17,7 +17,7 @@ type Definition struct {
 	ItemDefinition *Definition            // need ItemDefinition when Type is Array
 }
 
-// TODO: 后续 definition 也要改成根据配置生成
+// TODO: 后续 definition 也要改成根据 JSON 配置生成
 var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 	"resourceSpans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 		"resource": {Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{

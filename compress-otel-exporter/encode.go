@@ -119,6 +119,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 				if err != nil {
 					return err
 				}
+				status[myName] = intv
 			}
 		} else {
 			err := encodeInt(intv, buf)
