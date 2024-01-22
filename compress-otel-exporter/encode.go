@@ -215,13 +215,17 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 	case *model.ObjectValue:
 
 		needEncode := false
-		if def.Pooled {
-			if _, ok := valuePools[myName]; !ok {
-				valuePools[myName] = treemap.NewWith(model.ValueComparator)
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
 			}
-			myNameMap := valuePools[myName]
-			if _, ok := myNameMap.Get(val); !ok {
-				myNameMap.Put(val, myNameMap.Size())
+			if _, ok := valuePools[poolId]; !ok {
+				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			}
+			myPool := valuePools[poolId]
+			if _, ok := myPool.Get(val); !ok {
+				myPool.Put(val, myPool.Size())
 				// 如果池化且第一次加入池子，则需要编码
 				needEncode = true
 			}
@@ -266,17 +270,21 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			}
 		}
 
-		if def.Pooled {
-			index, _ := valuePools[myName].Get(val)
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
+			}
+			index, _ := valuePools[poolId].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
 			// 存储 tempBuffer 的结果到 map
-			if _, ok := valueEncodePools[myName]; !ok {
-				valueEncodePools[myName] = make(map[int]*bytes.Buffer)
+			if _, ok := valueEncodePools[poolId]; !ok {
+				valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
 			}
-			valueEncodePools[myName][index.(int)] = tempBuffer
+			valueEncodePools[poolId][index.(int)] = tempBuffer
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
 			if err != nil {
@@ -286,13 +294,17 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 	case *model.ArrayValue:
 
 		needEncode := false
-		if def.Pooled {
-			if _, ok := valuePools[myName]; !ok {
-				valuePools[myName] = treemap.NewWith(model.ValueComparator)
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
 			}
-			myNameMap := valuePools[myName]
-			if _, ok := myNameMap.Get(val); !ok {
-				myNameMap.Put(val, myNameMap.Size())
+			if _, ok := valuePools[poolId]; !ok {
+				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			}
+			myPool := valuePools[poolId]
+			if _, ok := myPool.Get(val); !ok {
+				myPool.Put(val, myPool.Size())
 				// 如果池化且第一次加入池子，则需要编码
 				needEncode = true
 			}
@@ -323,17 +335,21 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			}
 		}
 
-		if def.Pooled {
-			index, _ := valuePools[myName].Get(val)
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
+			}
+			index, _ := valuePools[poolId].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
 			// 存储 tempBuffer 的结果到 map
-			if _, ok := valueEncodePools[myName]; !ok {
-				valueEncodePools[myName] = make(map[int]*bytes.Buffer)
+			if _, ok := valueEncodePools[poolId]; !ok {
+				valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
 			}
-			valueEncodePools[myName][index.(int)] = tempBuffer
+			valueEncodePools[poolId][index.(int)] = tempBuffer
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
 			if err != nil {
