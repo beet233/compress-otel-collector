@@ -3,10 +3,12 @@ package compressotelexporter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/beet233/compressotelcollector/model"
 	"github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -165,6 +167,22 @@ func pushTraces(
 	err = Encode(tracesValue, model.GetTraceModel(), file)
 	if err != nil {
 		return err
+	}
+
+	// 如果存在目标 url，则发一个 Post 请求把压缩结果送过去
+	if len(MyConfig.TargetReceiverUrl) > 0 {
+		var buffer bytes.Buffer
+		err = Encode(tracesValue, model.GetTraceModel(), &buffer)
+		if err != nil {
+			return err
+		}
+		// 创建 HTTP 请求，这里 buffer 是 POST 请求的 body
+		resp, err := http.Post(MyConfig.TargetReceiverUrl, "*/*", &buffer)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		fmt.Println("post resp status: ", resp.Status)
 	}
 
 	return nil

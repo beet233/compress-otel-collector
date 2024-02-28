@@ -1,3 +1,5 @@
 built/
+built_application_agent/
+built_backend_agent/
 .idea/
 **/.idea/

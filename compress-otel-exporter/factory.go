@@ -48,7 +48,9 @@ func createTracesExporter(
 	// 赋给全局 config，主要是 pushTraces 本身并不携带 config 信息
 	MyConfig.Leb128Enabled = cfg.(*config).Leb128Enabled
 	MyConfig.StringPoolEnabled = cfg.(*config).StringPoolEnabled
+	MyConfig.TargetReceiverUrl = cfg.(*config).TargetReceiverUrl
 
+	// 这里的 pushTraces 其实可以改成 自定义struct.pushTraces，自定义 struct 里可以携带 config，参考 arrow
 	return exporterhelper.NewTracesExporter(ctx, set, cfg,
 		pushTraces,
 		//	The parameters below are optional. Uncomment any as you need.

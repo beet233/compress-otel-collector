@@ -25,10 +25,9 @@ func NewFactory() receiver.Factory {
 		// component.StabilityLevelAlpha
 		// component.StabilityLevelBeta
 		// component.StabilityLevelStable
-        receiver.WithTraces(createTracesReceiver, component.StabilityLevelBeta),
-        
-        receiver.WithLogs(createLogsReceiver, component.StabilityLevelAlpha),
-        
+		receiver.WithTraces(createTracesReceiver, component.StabilityLevelBeta),
+
+		receiver.WithLogs(createLogsReceiver, component.StabilityLevelAlpha),
 	)
 }
 
@@ -43,7 +42,10 @@ func createTracesReceiver(
 	nextConsumer consumer.Traces,
 ) (receiver receiver.Traces, err error) {
 
-	return &trace{}, err
+	return &trace{
+		config:       cfg.(*Config),
+		nextConsumer: nextConsumer,
+	}, err
 
 }
 func createLogsReceiver(
