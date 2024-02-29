@@ -3,6 +3,7 @@ module github.com/beet233/compressotelreceiver
 go 1.19
 
 require (
+	github.com/beet233/compressotelcollector/model v0.0.1
 	github.com/stretchr/testify v1.8.1
 	go.opentelemetry.io/collector v0.68.0
 	go.opentelemetry.io/collector/component v0.68.0
@@ -38,3 +39,5 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/beet233/compressotelcollector/model v0.0.1 => ../model

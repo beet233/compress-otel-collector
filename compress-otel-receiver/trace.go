@@ -3,8 +3,9 @@ package compressotelreceiver
 import (
 	"context"
 	"fmt"
+	"github.com/beet233/compressotelcollector/model"
 	"go.opentelemetry.io/collector/consumer"
-	"io"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"net/http"
 	"strconv"
 
@@ -21,14 +22,22 @@ func (comp *trace) Start(ctx context.Context, host component.Host) error {
 	// 处理函数
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			body, err := io.ReadAll(r.Body)
+			// body, err := io.ReadAll(r.Body)
+			// if err != nil {
+			// 	http.Error(w, "Error reading request body", http.StatusInternalServerError)
+			// } else {
+			// 	// fmt.Fprintf(w, "打打你的: %s", body)
+			// 	fmt.Println("received raw data:")
+			// 	fmt.Println(string(body))
+			//
+			// 	// comp.nextConsumer.ConsumeTraces()
+			// }
+			value, err := Decode(model.GetTraceModel(), r.Body)
 			if err != nil {
-				http.Error(w, "Error reading request body", http.StatusInternalServerError)
-			} else {
-				fmt.Fprintf(w, "打打你的: %s", body)
-				fmt.Println("打打你的: ", string(body))
-				// comp.nextConsumer.ConsumeTraces()
+				fmt.Println("error during decoding: ", err.Error())
+				http.Error(w, "Error decoding request body", http.StatusInternalServerError)
 			}
+			comp.nextConsumer.ConsumeTraces(ctx, valueToTraces(value))
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -45,4 +54,9 @@ func (comp *trace) Start(ctx context.Context, host component.Host) error {
 
 func (comp *trace) Shutdown(ctx context.Context) error {
 	return nil
+}
+
+func valueToTraces(value *model.Value) ptrace.Traces {
+	// TODO
+	return ptrace.NewTraces()
 }

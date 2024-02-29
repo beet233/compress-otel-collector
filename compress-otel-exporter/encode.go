@@ -493,24 +493,42 @@ func isNullValue(val model.Value) bool {
 
 func encodeInt(val int, buf *bytes.Buffer) error {
 	if MyConfig.Leb128Enabled {
-		for {
-			// Get the 7 least significant bits of the value.
+		// 这里使用的是有符号的 sleb128，对于负数可以省略前置的 11111111，对于正数省略前置的 00000000
+		more := true
+		i := 0
+		for i < 8 && more {
+			// 取出val的最低7位
 			byteVal := byte(val & 0x7F)
+			// 去掉已处理的7位
 			val >>= 7
 
-			// If there are no more bits to encode, or there are bits left but they
-			// are just the sign bit, write the byte and break.
-			// 这里使用的是有符号的 sleb128，对于负数可以省略前置的 11111111，对于正数省略前置的 00000000
-			if (val == 0 && (byteVal&0x40) == 0) || (val == -1 && (byteVal&0x40) != 0) {
-				return buf.WriteByte(byteVal)
-			}
+			// 设置继续位(最高位): 如果val非零或字节的符号位与val的符号位不一致
+			// 当val为正数且byteVal的第7位为1，或val为负数且byteVal的第7位为0，需要设置继续位，说明后面还有字节
+			// 就是说符号位要留一个，不能全删了，不然正负就改变了
+			// 继续位的判断依据了负数在内存中的符号扩展特性
+			shouldContinue := (val != 0 && val != -1)                            // 检查是否还有更多位需要编码
+			needsSignExtension := ((byteVal & 0x40) != 0) != ((val & 0x40) != 0) // 检查符号位扩展是否需要
 
-			// Set the continuation bit for the next byte.
-			byteVal |= 0x80
+			more = shouldContinue || needsSignExtension
+			if more {
+				byteVal |= 0x80 // 如果有更多的字节，则将byteVal的第8位设置为1
+			}
+			// 将处理后的字节写入到缓冲区
 			if err := buf.WriteByte(byteVal); err != nil {
 				return err
 			}
+			i += 1
 		}
+
+		// 如果需要最高位的 8 bit，那就直接 copy，不用取 7 bit 了
+		if i == 8 && more {
+			err := buf.WriteByte(byte(val & 0xFF))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	} else {
 		return binary.Write(buf, binary.LittleEndian, int64(val))
 	}
