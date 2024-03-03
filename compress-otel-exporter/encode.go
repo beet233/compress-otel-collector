@@ -239,7 +239,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 
 		if needEncode {
 			objv := val.(*model.ObjectValue).Data
-			if len(myName) >= len("attributes") && myName[len(myName)-len("attributes"):] == "attributes" {
+			// if len(myName) >= len("attributes") && myName[len(myName)-len("attributes"):] == "attributes" {
+			if def.Fields == nil {
 				err := innerFreeMapEncode(objv, stringPool, tempBuffer)
 				if err != nil {
 					return nil
