@@ -55,6 +55,10 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	// }
 	// fmt.Println()
 
+	err = encodeInt(len(valuePools), metaBuffer)
+	if err != nil {
+		return err
+	}
 	for _, field := range model.GetTopologicalTraceModelFields() {
 		valuePool, exist := valuePools[field]
 		if exist {
@@ -72,10 +76,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 				return err
 			}
 			for i := 0; i < valuePool.Size(); i++ {
-				err = encodeInt(valueEncodePools[field][i].Len(), metaBuffer)
-				if err != nil {
-					return err
-				}
+				// 不需要 bytes 的 len，bytes 本身是可根据 def 解析的
 				_, err = metaBuffer.Write(valueEncodePools[field][i].Bytes())
 				if err != nil {
 					return err
