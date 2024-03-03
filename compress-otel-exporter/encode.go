@@ -33,6 +33,10 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	// 解析需要的是 index -> value，所以编码进去的应该是 reverse map
 	// 先编码 stringPool
 	strings := sortMapByValue(stringPool)
+	err = encodeInt(len(strings), metaBuffer)
+	if err != nil {
+		return err
+	}
 	for i := 0; i < len(strings); i++ {
 		err = encodeInt(len(strings[i]), metaBuffer)
 		if err != nil {
@@ -54,12 +58,24 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	for _, field := range model.GetTopologicalTraceModelFields() {
 		valuePool, exist := valuePools[field]
 		if exist {
+			err = encodeInt(len(field), metaBuffer)
+			if err != nil {
+				return err
+			}
 			_, err = metaBuffer.WriteString(field)
 			if err != nil {
 				return err
 			}
-			values := sortTreeMapByValue(valuePool)
-			for i := 0; i < len(values); i++ {
+			// values := sortTreeMapByValue(valuePool)
+			err = encodeInt(valuePool.Size(), metaBuffer)
+			if err != nil {
+				return err
+			}
+			for i := 0; i < valuePool.Size(); i++ {
+				err = encodeInt(valueEncodePools[field][i].Len(), metaBuffer)
+				if err != nil {
+					return err
+				}
 				_, err = metaBuffer.Write(valueEncodePools[field][i].Bytes())
 				if err != nil {
 					return err
@@ -194,21 +210,75 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 		}
 
 	case *model.StringValue:
-		strv := val.(*model.StringValue).Data
-		if MyConfig.StringPoolEnabled {
-			if _, ok := stringPool[strv]; !ok {
-				stringPool[strv] = len(stringPool)
+		// strv := val.(*model.StringValue).Data
+		// if MyConfig.StringPoolEnabled {
+		// 	if _, ok := stringPool[strv]; !ok {
+		// 		stringPool[strv] = len(stringPool)
+		// 	}
+		// 	err := encodeInt(stringPool[strv], buf)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// } else {
+		// 	err := encodeInt(len(strv), buf)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	_, err = buf.WriteString(strv)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
+
+		needEncode := false
+
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
 			}
-			err := encodeInt(stringPool[strv], buf)
-			if err != nil {
-				return err
+			if _, ok := valuePools[poolId]; !ok {
+				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			}
+			myPool := valuePools[poolId]
+			if _, ok := myPool.Get(val); !ok {
+				myPool.Put(val, myPool.Size())
+				needEncode = true
 			}
 		} else {
-			err := encodeInt(len(strv), buf)
+			needEncode = true
+		}
+
+		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+
+		if needEncode {
+			err := encodeInt(len(val.(*model.StringValue).Data), tempBuffer)
 			if err != nil {
 				return err
 			}
-			_, err = buf.WriteString(strv)
+			_, err = tempBuffer.WriteString(val.(*model.StringValue).Data)
+			if err != nil {
+				return err
+			}
+		}
+
+		if def.Pooled || def.SharePooled {
+			poolId := myName
+			if def.SharePooled {
+				poolId = def.SharePoolId
+			}
+			index, _ := valuePools[poolId].Get(val)
+			err := encodeInt(index.(int), buf)
+			if err != nil {
+				return err
+			}
+			// 存储 tempBuffer 的结果到 map
+			if _, ok := valueEncodePools[poolId]; !ok {
+				valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
+			}
+			valueEncodePools[poolId][index.(int)] = tempBuffer
+		} else {
+			_, err := buf.Write(tempBuffer.Bytes())
 			if err != nil {
 				return err
 			}

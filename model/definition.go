@@ -27,17 +27,17 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 		}},
 		"scopeSpans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 			"scope": {Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
-				"name":                   {Type: String, Nullable: true},
-				"version":                {Type: String, Nullable: true},
+				"name":                   {Type: String, Nullable: true, Pooled: true},
+				"version":                {Type: String, Nullable: true, Pooled: true},
 				"attributes":             {Type: Object, Nullable: true, Pooled: true},
 				"droppedAttributesCount": {Type: Integer, Nullable: true},
 			}},
 			"spans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 				"traceId":                {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "traceId"},
 				"spanId":                 {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "spanId"},
-				"traceState":             {Type: String, Nullable: true},
+				"traceState":             {Type: String, Nullable: true, SharePooled: true, SharePoolId: "traceState"},
 				"parentSpanId":           {Type: Bytes, Nullable: true, SharePooled: true, SharePoolId: "spanId"},
-				"name":                   {Type: String, Nullable: false},
+				"name":                   {Type: String, Nullable: false, Pooled: true},
 				"kind":                   {Type: Integer, Nullable: true},
 				"startTimeUnixNano":      {Type: Integer, Nullable: false, DiffEncode: true},
 				"endTimeUnixNano":        {Type: Integer, Nullable: false, DiffEncode: true},
@@ -45,7 +45,7 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 				"droppedAttributesCount": {Type: Integer, Nullable: true},
 				"events": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 					"timeUnixNano":           {Type: Integer, Nullable: true, DiffEncode: true},
-					"name":                   {Type: String, Nullable: true},
+					"name":                   {Type: String, Nullable: true, Pooled: true},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},
 				}}},
@@ -53,19 +53,19 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 				"links": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
 					"traceId":                {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "traceId"},
 					"spanId":                 {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "spanId"},
-					"traceState":             {Type: String, Nullable: true},
+					"traceState":             {Type: String, Nullable: true, SharePooled: true, SharePoolId: "traceState"},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},
 				}}},
 				"droppedLinksCount": {Type: Integer, Nullable: true},
 				"status": {Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
-					"message": {Type: String, Nullable: true},
+					"message": {Type: String, Nullable: true, Pooled: true},
 					"code":    {Type: Integer, Nullable: false},
 				}},
 			}}},
-			"schemaUrl": {Type: String, Nullable: true},
+			"schemaUrl": {Type: String, Nullable: true, Pooled: true},
 		}}},
-		"schemaUrl": {Type: String, Nullable: true},
+		"schemaUrl": {Type: String, Nullable: true, Pooled: true},
 	}}},
 }}
 
