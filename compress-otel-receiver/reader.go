@@ -70,9 +70,29 @@ func (r *DataReader) readFloat() (float64, error) {
 	return val, nil
 }
 
+func (r *DataReader) readBoolean() (bool, error) {
+	if len(r.data) < 1 {
+		return false, errors.New("not enough data for boolean")
+	}
+
+	val := r.data[len(r.data)-1] != 0
+	r.data = r.data[1:]
+	return val, nil
+}
+
+func (r *DataReader) readBytes(length int) ([]byte, error) {
+	if len(r.data) < length {
+		return nil, errors.New("no data available for bytes")
+	}
+
+	val := r.data[:length]
+	r.data = r.data[length:]
+	return val, nil
+}
+
 func (r *DataReader) readByte() (byte, error) {
 	if len(r.data) == 0 {
-		return 0, errors.New("no data available")
+		return 0, errors.New("no data available for byte")
 	}
 
 	val := r.data[0]

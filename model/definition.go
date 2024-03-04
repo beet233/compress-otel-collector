@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 )
@@ -133,21 +132,44 @@ func dfs(definition *Definition, myName string, result []string) []string {
 	return result
 }
 
-// 目前没用
 // 将定位 field 的 string 映射到 def 的实际子 Definition，如 "resourceSpans item resource attributes" 中间用一个空格
 func FieldStringToDefinition(field string, def *Definition) *Definition {
 	fieldPath := strings.Split(field, " ")
 	currDef := def
 	for i := 0; i < len(fieldPath); i++ {
 		if fieldPath[i] == "item" {
-			currDef = def.ItemDefinition
+			currDef = currDef.ItemDefinition
 		} else {
-			currDef = def.Fields[fieldPath[i]]
+			currDef = currDef.Fields[fieldPath[i]]
 		}
 	}
 	if currDef == nil {
-		fmt.Println(field)
-		fmt.Println(fieldPath)
+		// 找不到的应该是 sharedPoolId
+		// dfs 寻找到第一个即可
+		currDef = dfsSharedPoolId(field, def)
 	}
 	return currDef
+}
+
+func dfsSharedPoolId(sharedPoolId string, def *Definition) *Definition {
+	if def != nil {
+		if def.SharePooled && def.SharePoolId == sharedPoolId {
+			return def
+		}
+		switch def.Type {
+		case Object:
+			for _, fieldDef := range def.Fields {
+				result := dfsSharedPoolId(sharedPoolId, fieldDef)
+				if result != nil {
+					return result
+				}
+			}
+		case Array:
+			result := dfsSharedPoolId(sharedPoolId, def.ItemDefinition)
+			if result != nil {
+				return result
+			}
+		}
+	}
+	return nil
 }

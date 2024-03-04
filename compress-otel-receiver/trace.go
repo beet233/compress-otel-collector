@@ -56,7 +56,7 @@ func (comp *trace) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func valueToTraces(value *model.Value) ptrace.Traces {
+func valueToTraces(value model.Value) ptrace.Traces {
 	// TODO
 	return ptrace.NewTraces()
 }
