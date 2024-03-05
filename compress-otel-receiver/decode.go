@@ -66,6 +66,14 @@ func Decode(def *model.Definition, in io.Reader) (model.Value, error) {
 			fmt.Println("add", value, "into valuePools", fieldName)
 		}
 	}
+	fmt.Println("decoding data")
+	magic, err := reader.readString(6)
+	if err != nil {
+		return nil, err
+	}
+	if magic != "cprval" {
+		return nil, errors.New("magic error")
+	}
 	result, err = innerDecode(def, "", stringPool, valuePools, reader, true)
 	if err != nil {
 		return nil, err
@@ -76,7 +84,8 @@ func Decode(def *model.Definition, in io.Reader) (model.Value, error) {
 // usePool 标记本身是否可以使用 valuePools
 func innerDecode(def *model.Definition, myName string, stringPool []string, valuePools map[string][]model.Value, reader *DataReader, usePool bool) (model.Value, error) {
 	var result model.Value
-	if def.Nullable {
+	// 池子里的是不带 null 标记的
+	if def.Nullable && usePool {
 		exist, err := reader.readBoolean()
 		if err != nil {
 			return nil, err
@@ -93,14 +102,14 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("intv:", intv)
+		// fmt.Println("intv:", intv)
 		result = &model.IntegerValue{Data: intv}
 	case model.Boolean:
 		boolv, err := reader.readBoolean()
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("boolv:", boolv)
+		// fmt.Println("boolv:", boolv)
 		result = &model.BooleanValue{Data: boolv}
 	case model.Double:
 		dbv, err := reader.readFloat()
@@ -126,7 +135,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 				return nil, err
 			}
 			bv, err := reader.readBytes(len)
-			fmt.Println("bv:", bv)
+			// fmt.Println("bv:", bv)
 			result = &model.BytesValue{Data: bv}
 		}
 	case model.String:
@@ -147,7 +156,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 				return nil, err
 			}
 			strv, err := reader.readString(len)
-			fmt.Println("strv:", strv)
+			// fmt.Println("strv:", strv)
 			result = &model.StringValue{Data: strv}
 		}
 	case model.Object:
@@ -169,7 +178,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 				if err != nil {
 					return nil, err
 				}
-				fmt.Println("objv(free):", objv)
+				// fmt.Println("objv(free):", objv)
 				result = &model.ObjectValue{Data: objv}
 			} else {
 				if len(myName) > 0 {
@@ -183,7 +192,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 					}
 					objv[fieldName] = fieldValue
 				}
-				fmt.Println("objv:", objv)
+				// fmt.Println("objv:", objv)
 				result = &model.ObjectValue{Data: objv}
 			}
 		}
@@ -215,7 +224,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 				}
 				arrv = append(arrv, item)
 			}
-			fmt.Println("arrv:", arrv)
+			// fmt.Println("arrv:", arrv)
 			result = &model.ArrayValue{Data: arrv}
 		}
 	}

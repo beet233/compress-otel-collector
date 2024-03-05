@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"github.com/beet233/compressotelcollector/model"
 	"github.com/emirpasic/gods/maps/treemap"
 	"io"
@@ -25,6 +24,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	valueEncodePools := make(map[string]map[int]*bytes.Buffer)
 	stringPool := make(map[string]int)
 	dataBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+	dataBuffer.WriteString("cprval")
 	err = innerEncode(val, def, "", status, valuePools, valueEncodePools, stringPool, dataBuffer)
 	if err != nil {
 		return
@@ -169,7 +169,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			}
 			myPool := valuePools[poolId]
 			if _, ok := myPool.Get(val); !ok {
-				fmt.Println("add into pool", poolId, val, myPool.Size())
+				// fmt.Println("add into pool", poolId, val, myPool.Size())
 				myPool.Put(val, myPool.Size())
 				needEncode = true
 			}
@@ -180,13 +180,6 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
-			if def.Nullable {
-				// 编个 bit 1
-				err := binary.Write(tempBuffer, binary.LittleEndian, true)
-				if err != nil {
-					return err
-				}
-			}
 			// fmt.Println("bytes len:", len(val.(*model.BytesValue).Data))
 			// fmt.Println("bytes:", val.(*model.BytesValue).Data)
 			err := encodeInt(len(val.(*model.BytesValue).Data), tempBuffer)
@@ -215,7 +208,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 					valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
 				}
 				valueEncodePools[poolId][index.(int)] = tempBuffer
-				fmt.Println("add into encode pool", poolId, tempBuffer.Bytes(), index.(int))
+				// fmt.Println("add into encode pool", poolId, tempBuffer.Bytes(), index.(int))
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
@@ -267,13 +260,6 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
-			if def.Nullable {
-				// 编个 bit 1
-				err := binary.Write(tempBuffer, binary.LittleEndian, true)
-				if err != nil {
-					return err
-				}
-			}
 			err := encodeInt(len(val.(*model.StringValue).Data), tempBuffer)
 			if err != nil {
 				return err
@@ -332,13 +318,6 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
-			if def.Nullable {
-				// 编个 bit 1
-				err := binary.Write(tempBuffer, binary.LittleEndian, true)
-				if err != nil {
-					return err
-				}
-			}
 			objv := val.(*model.ObjectValue).Data
 			// if len(myName) >= len("attributes") && myName[len(myName)-len("attributes"):] == "attributes" {
 			if def.Fields == nil {
@@ -422,13 +401,6 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
-			if def.Nullable {
-				// 编个 bit 1
-				err := binary.Write(tempBuffer, binary.LittleEndian, true)
-				if err != nil {
-					return err
-				}
-			}
 			arrv := val.(*model.ArrayValue).Data
 			err := encodeInt(len(arrv), tempBuffer)
 			if err != nil {
