@@ -37,6 +37,7 @@ func (comp *trace) Start(ctx context.Context, host component.Host) error {
 				fmt.Println("error during decoding: ", err.Error())
 				http.Error(w, "Error decoding request body", http.StatusInternalServerError)
 			}
+			fmt.Println(value)
 			comp.nextConsumer.ConsumeTraces(ctx, valueToTraces(value))
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)

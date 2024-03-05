@@ -33,7 +33,7 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 			}},
 			"spans": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: false, Fields: map[string]*Definition{
 				"traceId":                {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "traceId"},
-				"spanId":                 {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "spanId"},
+				"spanId":                 {Type: Bytes, Nullable: true, SharePooled: true, SharePoolId: "spanId"},
 				"traceState":             {Type: String, Nullable: true, SharePooled: true, SharePoolId: "traceState"},
 				"parentSpanId":           {Type: Bytes, Nullable: true, SharePooled: true, SharePoolId: "spanId"},
 				"name":                   {Type: String, Nullable: false, Pooled: true},
@@ -51,7 +51,7 @@ var traceModel = &Definition{Type: Object, Nullable: false, Pooled: false, Field
 				"droppedEventsCount": {Type: Integer, Nullable: true},
 				"links": {Type: Array, Nullable: true, Pooled: false, ItemDefinition: &Definition{Type: Object, Nullable: false, Pooled: true, Fields: map[string]*Definition{
 					"traceId":                {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "traceId"},
-					"spanId":                 {Type: Bytes, Nullable: false, SharePooled: true, SharePoolId: "spanId"},
+					"spanId":                 {Type: Bytes, Nullable: true, SharePooled: true, SharePoolId: "spanId"},
 					"traceState":             {Type: String, Nullable: true, SharePooled: true, SharePoolId: "traceState"},
 					"attributes":             {Type: Object, Nullable: true, Pooled: true},
 					"droppedAttributesCount": {Type: Integer, Nullable: true},

@@ -135,7 +135,7 @@ func ValueComparator(a, b interface{}) int {
 			return len(bv1.Data) - len(bv2.Data)
 		}
 		for i := 0; i < len(bv1.Data); i++ {
-			comp := int(bv1.Data[i] - bv2.Data[i])
+			comp := int(bv1.Data[i]) - int(bv2.Data[i])
 			if comp != 0 {
 				return comp
 			}

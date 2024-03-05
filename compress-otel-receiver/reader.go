@@ -75,7 +75,7 @@ func (r *DataReader) readBoolean() (bool, error) {
 		return false, errors.New("not enough data for boolean")
 	}
 
-	val := r.data[len(r.data)-1] != 0
+	val := r.data[0] != 0
 	r.data = r.data[1:]
 	return val, nil
 }

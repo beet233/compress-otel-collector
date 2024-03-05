@@ -172,6 +172,7 @@ func pushTraces(
 	// 如果存在目标 url，则发一个 Post 请求把压缩结果送过去
 	if len(MyConfig.TargetReceiverUrl) > 0 {
 		var buffer bytes.Buffer
+		fmt.Println("#########################################################################")
 		err = Encode(tracesValue, model.GetTraceModel(), &buffer)
 		if err != nil {
 			return err
