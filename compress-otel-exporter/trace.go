@@ -35,11 +35,14 @@ func pushTraces(
 		return err
 	}
 
+	start := time.Now()
 	protoMarshaler := ptrace.ProtoMarshaler{}
 	buf, err := protoMarshaler.MarshalTraces(td)
 	if err != nil {
 		return err
 	}
+	end := time.Now()
+	fmt.Println("proto encoding duration:", end.Sub(start).String())
 
 	fileProto, err := os.Create(strconv.FormatInt(time.Now().UnixNano(), 10) + "_out_proto")
 	_, err = fileProto.Write(buf)
@@ -47,10 +50,13 @@ func pushTraces(
 		return err
 	}
 
+	start = time.Now()
 	_, err = zw1.Write(buf)
 	if err != nil {
 		return err
 	}
+	end = time.Now()
+	fmt.Println("proto zstd encoding duration:", end.Sub(start).String())
 
 	// 关闭 writer 用以完成压缩.
 	err = zw1.Close()
@@ -64,10 +70,13 @@ func pushTraces(
 		return err
 	}
 
+	start = time.Now()
 	_, err = gz1.Write(buf)
 	if err != nil {
 		return err
 	}
+	end = time.Now()
+	fmt.Println("proto gzip encoding duration:", end.Sub(start).String())
 
 	// 关闭 writer 用以完成压缩.
 	err = gz1.Close()
@@ -173,10 +182,13 @@ func pushTraces(
 	if len(MyConfig.TargetReceiverUrl) > 0 {
 		var buffer bytes.Buffer
 		fmt.Println("#########################################################################")
+		start := time.Now()
 		err = Encode(tracesValue, model.GetTraceModel(), &buffer)
 		if err != nil {
 			return err
 		}
+		end := time.Now()
+		fmt.Println("my encoding duration:", end.Sub(start).String())
 		// 创建 HTTP 请求，这里 buffer 是 POST 请求的 body
 		resp, err := http.Post(MyConfig.TargetReceiverUrl, "*/*", &buffer)
 		if err != nil {

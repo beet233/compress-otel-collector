@@ -7,7 +7,11 @@ import (
 	"github.com/beet233/compressotelcollector/model"
 	"github.com/emirpasic/gods/maps/treemap"
 	"io"
+	"os"
+	"runtime/pprof"
 	"sort"
+	"strconv"
+	"time"
 )
 
 const (
@@ -18,6 +22,11 @@ const (
 
 // Encode 将 Value 根据 Definition 进行编码，和字典一起编入 io.Writer
 func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
+	f, err := os.Create(strconv.FormatInt(time.Now().UnixNano(), 10) + "_pprof")
+	// start to record CPU profile and write to file `f`
+	_ = pprof.StartCPUProfile(f)
+	// stop to record CPU profile
+	defer pprof.StopCPUProfile()
 	// 作为时间戳等状态的容器
 	status := make(map[string]any)
 	valuePools := make(map[string]*treemap.Map)
