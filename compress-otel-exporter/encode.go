@@ -25,7 +25,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	stringPool := make(map[string]int)
 	dataBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 	dataBuffer.WriteString("cprval")
-	err = innerEncode(val, def, "", status, valuePools, valueEncodePools, stringPool, dataBuffer)
+	err = innerEncode(val, def, "", &status, &valuePools, &valueEncodePools, &stringPool, dataBuffer)
 	if err != nil {
 		return
 	}
@@ -98,7 +98,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 }
 
 // 传承层级 myName 作为 valuePools 的 key，如 "resourceSpans item resource attributes" 中间用一个空格
-func innerEncode(val model.Value, def *model.Definition, myName string, status map[string]any, valuePools map[string]*treemap.Map, valueEncodePools map[string]map[int]*bytes.Buffer, stringPool map[string]int, buf *bytes.Buffer) (err error) {
+func innerEncode(val model.Value, def *model.Definition, myName string, status *map[string]any, valuePools *map[string]*treemap.Map, valueEncodePools *map[string]map[int]*bytes.Buffer, stringPool *map[string]int, buf *bytes.Buffer) (err error) {
 
 	if def.Nullable {
 		if val == nil || isNullValue(val) {
@@ -126,18 +126,18 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 	case *model.IntegerValue:
 		intv := val.(*model.IntegerValue).Data
 		if def.DiffEncode {
-			if _, exist := status[myName]; !exist {
-				status[myName] = intv
+			if _, exist := (*status)[myName]; !exist {
+				(*status)[myName] = intv
 				err := encodeInt(intv, buf)
 				if err != nil {
 					return err
 				}
 			} else {
-				err := encodeInt(intv-status[myName].(int), buf)
+				err := encodeInt(intv-(*status)[myName].(int), buf)
 				if err != nil {
 					return err
 				}
-				status[myName] = intv
+				(*status)[myName] = intv
 			}
 		} else {
 			err := encodeInt(intv, buf)
@@ -164,10 +164,10 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			if _, ok := valuePools[poolId]; !ok {
-				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			if _, ok := (*valuePools)[poolId]; !ok {
+				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
 			}
-			myPool := valuePools[poolId]
+			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
 				// fmt.Println("add into pool", poolId, val, myPool.Size())
 				myPool.Put(val, myPool.Size())
@@ -197,17 +197,17 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			index, _ := valuePools[poolId].Get(val)
+			index, _ := (*valuePools)[poolId].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
 			// 存储 tempBuffer 的结果到 map
 			if needEncode {
-				if _, ok := valueEncodePools[poolId]; !ok {
-					valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
+				if _, ok := (*valueEncodePools)[poolId]; !ok {
+					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				valueEncodePools[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
 				// fmt.Println("add into encode pool", poolId, tempBuffer.Bytes(), index.(int))
 			}
 		} else {
@@ -245,10 +245,10 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			if _, ok := valuePools[poolId]; !ok {
-				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			if _, ok := (*valuePools)[poolId]; !ok {
+				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
 			}
-			myPool := valuePools[poolId]
+			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
 				myPool.Put(val, myPool.Size())
 				needEncode = true
@@ -275,17 +275,17 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			index, _ := valuePools[poolId].Get(val)
+			index, _ := (*valuePools)[poolId].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
 			// 存储 tempBuffer 的结果到 map
 			if needEncode {
-				if _, ok := valueEncodePools[poolId]; !ok {
-					valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
+				if _, ok := (*valueEncodePools)[poolId]; !ok {
+					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				valueEncodePools[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
@@ -301,10 +301,10 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			if _, ok := valuePools[poolId]; !ok {
-				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			if _, ok := (*valuePools)[poolId]; !ok {
+				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
 			}
-			myPool := valuePools[poolId]
+			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
 				myPool.Put(val, myPool.Size())
 				// 如果池化且第一次加入池子，则需要编码
@@ -358,17 +358,17 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			index, _ := valuePools[poolId].Get(val)
+			index, _ := (*valuePools)[poolId].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
 			// 存储 tempBuffer 的结果到 map
 			if needEncode {
-				if _, ok := valueEncodePools[poolId]; !ok {
-					valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
+				if _, ok := (*valueEncodePools)[poolId]; !ok {
+					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				valueEncodePools[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
@@ -384,10 +384,10 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			if _, ok := valuePools[poolId]; !ok {
-				valuePools[poolId] = treemap.NewWith(model.ValueComparator)
+			if _, ok := (*valuePools)[poolId]; !ok {
+				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
 			}
-			myPool := valuePools[poolId]
+			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
 				myPool.Put(val, myPool.Size())
 				// 如果池化且第一次加入池子，则需要编码
@@ -425,17 +425,17 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 			if def.SharePooled {
 				poolId = def.SharePoolId
 			}
-			index, _ := valuePools[poolId].Get(val)
+			index, _ := (*valuePools)[poolId].Get(val)
 			err := encodeInt(index.(int), buf)
 			if err != nil {
 				return err
 			}
 			// 存储 tempBuffer 的结果到 map
 			if needEncode {
-				if _, ok := valueEncodePools[poolId]; !ok {
-					valueEncodePools[poolId] = make(map[int]*bytes.Buffer)
+				if _, ok := (*valueEncodePools)[poolId]; !ok {
+					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				valueEncodePools[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
@@ -448,7 +448,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status m
 }
 
 // 将自由的 map （其实只有 attributes 及其内部）编码进 buf，过程中 string 同样需要处理入池
-func innerFreeMapEncode(freeMap map[string]model.Value, stringPool map[string]int, buf *bytes.Buffer) error {
+func innerFreeMapEncode(freeMap map[string]model.Value, stringPool *map[string]int, buf *bytes.Buffer) error {
 	// freeMap 需要有 size，而有 def 的不需要
 	err := encodeInt(len(freeMap), buf)
 	if err != nil {
@@ -456,10 +456,10 @@ func innerFreeMapEncode(freeMap map[string]model.Value, stringPool map[string]in
 	}
 	// freeMap 中我们不需要关心遍历 map 的顺序
 	for key, value := range freeMap {
-		if _, exist := stringPool[key]; !exist {
-			stringPool[key] = len(stringPool)
+		if _, exist := (*stringPool)[key]; !exist {
+			(*stringPool)[key] = len(*stringPool)
 		}
-		err := encodeInt(stringPool[key], buf)
+		err := encodeInt((*stringPool)[key], buf)
 		if err != nil {
 			return err
 		}
@@ -487,7 +487,7 @@ func innerFreeMapEncode(freeMap map[string]model.Value, stringPool map[string]in
 	return nil
 }
 
-func innerFreeValueEncode(value model.Value, stringPool map[string]int, buf *bytes.Buffer) error {
+func innerFreeValueEncode(value model.Value, stringPool *map[string]int, buf *bytes.Buffer) error {
 	switch value.(type) {
 	case *model.IntegerValue:
 		err := encodeInt(value.(*model.IntegerValue).Data, buf)
@@ -516,10 +516,10 @@ func innerFreeValueEncode(value model.Value, stringPool map[string]int, buf *byt
 	case *model.StringValue:
 		strv := value.(*model.StringValue).Data
 		if MyConfig.StringPoolEnabled {
-			if _, ok := stringPool[strv]; !ok {
-				stringPool[strv] = len(stringPool)
+			if _, ok := (*stringPool)[strv]; !ok {
+				(*stringPool)[strv] = len(*stringPool)
 			}
-			err := encodeInt(stringPool[strv], buf)
+			err := encodeInt((*stringPool)[strv], buf)
 			if err != nil {
 				return err
 			}

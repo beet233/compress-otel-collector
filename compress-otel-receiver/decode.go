@@ -58,7 +58,7 @@ func Decode(def *model.Definition, in io.Reader) (model.Value, error) {
 		}
 		for j := 0; j < valuePoolSize; j++ {
 			// decode bytes to valuePools[fieldName]
-			value, err := innerDecode(fieldDef, fieldName, stringPool, valuePools, reader, false)
+			value, err := innerDecode(fieldDef, fieldName, nil, stringPool, &valuePools, reader, false)
 			if err != nil {
 				return nil, err
 			}
@@ -74,7 +74,8 @@ func Decode(def *model.Definition, in io.Reader) (model.Value, error) {
 	if magic != "cprval" {
 		return nil, errors.New("magic error")
 	}
-	result, err = innerDecode(def, "", stringPool, valuePools, reader, true)
+	status := make(map[string]any)
+	result, err = innerDecode(def, "", &status, stringPool, &valuePools, reader, true)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +83,7 @@ func Decode(def *model.Definition, in io.Reader) (model.Value, error) {
 }
 
 // usePool 标记本身是否可以使用 valuePools
-func innerDecode(def *model.Definition, myName string, stringPool []string, valuePools map[string][]model.Value, reader *DataReader, usePool bool) (model.Value, error) {
+func innerDecode(def *model.Definition, myName string, status *map[string]any, stringPool []string, valuePools *map[string][]model.Value, reader *DataReader, usePool bool) (model.Value, error) {
 	var result model.Value
 	// 池子里的是不带 null 标记的
 	if def.Nullable && usePool {
@@ -101,6 +102,13 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 		intv, err := reader.readLeb128Int()
 		if err != nil {
 			return nil, err
+		}
+		// 包含差分编码的元素及其父元素不应该入池，否则解码起来搞不清楚顺序
+		if def.DiffEncode {
+			if prev, exist := (*status)[myName]; exist {
+				intv = intv + prev.(int)
+			}
+			(*status)[myName] = intv
 		}
 		// fmt.Println("intv:", intv)
 		result = &model.IntegerValue{Data: intv}
@@ -127,7 +135,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 			if err != nil {
 				return nil, err
 			}
-			valuePool := valuePools[poolId]
+			valuePool := (*valuePools)[poolId]
 			result = valuePool[index]
 		} else {
 			len, err := reader.readLeb128Int()
@@ -148,7 +156,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 			if err != nil {
 				return nil, err
 			}
-			valuePool := valuePools[poolId]
+			valuePool := (*valuePools)[poolId]
 			result = valuePool[index]
 		} else {
 			len, err := reader.readLeb128Int()
@@ -169,7 +177,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 			if err != nil {
 				return nil, err
 			}
-			valuePool := valuePools[poolId]
+			valuePool := (*valuePools)[poolId]
 			result = valuePool[index]
 		} else {
 			if def.Fields == nil {
@@ -186,7 +194,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 				}
 				objv := make(map[string]model.Value)
 				for _, fieldName := range getSortedKeys(def.Fields) {
-					fieldValue, err := innerDecode(def.Fields[fieldName], myName+fieldName, stringPool, valuePools, reader, true)
+					fieldValue, err := innerDecode(def.Fields[fieldName], myName+fieldName, status, stringPool, valuePools, reader, true)
 					if err != nil {
 						return nil, err
 					}
@@ -206,7 +214,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 			if err != nil {
 				return nil, err
 			}
-			valuePool := valuePools[poolId]
+			valuePool := (*valuePools)[poolId]
 			result = valuePool[index]
 		} else {
 			length, err := reader.readLeb128Int()
@@ -218,7 +226,7 @@ func innerDecode(def *model.Definition, myName string, stringPool []string, valu
 			}
 			var arrv []model.Value
 			for i := 0; i < length; i++ {
-				item, err := innerDecode(def.ItemDefinition, myName+"item", stringPool, valuePools, reader, true)
+				item, err := innerDecode(def.ItemDefinition, myName+"item", status, stringPool, valuePools, reader, true)
 				if err != nil {
 					return nil, err
 				}
