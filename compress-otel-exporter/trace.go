@@ -23,6 +23,7 @@ func pushTraces(
 
 	// 创建一个 zstd writer.
 	var zstdBuf1 bytes.Buffer
+	zstd.WithEncoderConcurrency(1)
 	zw1, err := zstd.NewWriter(&zstdBuf1)
 	if err != nil {
 		return err
@@ -34,6 +35,7 @@ func pushTraces(
 	if err != nil {
 		return err
 	}
+	gz1.SetConcurrency(1<<20, 1)
 
 	start := time.Now()
 	protoMarshaler := ptrace.ProtoMarshaler{}

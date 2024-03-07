@@ -11,6 +11,7 @@ import (
 	"runtime/pprof"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -19,6 +20,14 @@ const (
 	typeConflictErrMsg          = "value & definition type conflict"
 	notNullableErrMsg           = "value is not nullable"
 )
+
+// 定义一个全局的 Pool，用于存放 *bytes.Buffer 实例。
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		// 池中没有对象时，自动创建一个 Buffer 并返回。
+		return new(bytes.Buffer)
+	},
+}
 
 // Encode 将 Value 根据 Definition 进行编码，和字典一起编入 io.Writer
 func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
@@ -186,7 +195,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			needEncode = true
 		}
 
-		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+		tempBuffer := bufferPool.Get().(*bytes.Buffer)
+		// tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
 			// fmt.Println("bytes len:", len(val.(*model.BytesValue).Data))
@@ -224,6 +234,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			if err != nil {
 				return err
 			}
+			tempBuffer.Reset()
+			bufferPool.Put(tempBuffer)
 		}
 
 	case *model.StringValue:
@@ -266,7 +278,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			needEncode = true
 		}
 
-		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+		tempBuffer := bufferPool.Get().(*bytes.Buffer)
+		// tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
 			err := encodeInt(len(val.(*model.StringValue).Data), tempBuffer)
@@ -301,6 +314,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			if err != nil {
 				return err
 			}
+			tempBuffer.Reset()
+			bufferPool.Put(tempBuffer)
 		}
 	case *model.ObjectValue:
 
@@ -324,7 +339,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			needEncode = true
 		}
 
-		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+		tempBuffer := bufferPool.Get().(*bytes.Buffer)
+		// tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
 			objv := val.(*model.ObjectValue).Data
@@ -384,6 +400,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			if err != nil {
 				return err
 			}
+			tempBuffer.Reset()
+			bufferPool.Put(tempBuffer)
 		}
 	case *model.ArrayValue:
 
@@ -407,7 +425,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			needEncode = true
 		}
 
-		tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
+		tempBuffer := bufferPool.Get().(*bytes.Buffer)
+		// tempBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
 
 		if needEncode {
 			arrv := val.(*model.ArrayValue).Data
@@ -451,6 +470,8 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 			if err != nil {
 				return err
 			}
+			tempBuffer.Reset()
+			bufferPool.Put(tempBuffer)
 		}
 	}
 	return nil
