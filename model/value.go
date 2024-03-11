@@ -2,6 +2,7 @@ package model
 
 import (
 	"log"
+	"sort"
 	"strings"
 )
 
@@ -88,6 +89,14 @@ func (av *ArrayValue) GetType() ValueType {
 
 func ValueComparator(a, b interface{}) int {
 
+	if a == nil && b == nil {
+		return 0
+	} else if b == nil {
+		return 1
+	} else if a == nil {
+		return -1
+	}
+
 	// panic if type error
 	v1 := a.(Value)
 	v2 := b.(Value)
@@ -147,16 +156,28 @@ func ValueComparator(a, b interface{}) int {
 		if len(objv1.Data) != len(objv2.Data) {
 			return len(objv1.Data) - len(objv2.Data)
 		}
-		for key, value1 := range objv1.Data {
-			if value2, exist := objv2.Data[key]; exist {
-				comp := ValueComparator(value1, value2)
-				if comp != 0 {
-					return comp
-				}
-			} else {
-				return -1
+		keys1 := getSortedKeys(objv1.Data)
+		keys2 := getSortedKeys(objv2.Data)
+		for i := 0; i < len(keys1); i++ {
+			comp := strings.Compare(keys1[i], keys2[i])
+			if comp != 0 {
+				return comp
+			}
+			comp = ValueComparator(objv1.Data[keys1[i]], objv2.Data[keys2[i]])
+			if comp != 0 {
+				return comp
 			}
 		}
+		// for key, value1 := range objv1.Data {
+		// 	if value2, exist := objv2.Data[key]; exist {
+		// 		comp := ValueComparator(value1, value2)
+		// 		if comp != 0 {
+		// 			return comp
+		// 		}
+		// 	} else {
+		// 		return -1
+		// 	}
+		// }
 		return 0
 	case Array:
 		av1 := v1.(*ArrayValue)
@@ -175,6 +196,18 @@ func ValueComparator(a, b interface{}) int {
 		log.Fatalln("Unknown type: ", type1)
 		return 0
 	}
+}
+
+func getSortedKeys(m map[string]Value) []string {
+	// 数组默认长度为map长度,后面append时,不需要重新申请内存和拷贝,效率很高
+	j := 0
+	keys := make([]string, len(m))
+	for k := range m {
+		keys[j] = k
+		j++
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func mapToValue(m map[string]any) Value {
@@ -205,7 +238,7 @@ func AnyToValue(a any) Value {
 	case float64:
 		myValue = &DoubleValue{Data: a.(float64)}
 	case int64:
-		myValue = &IntegerValue{Data: a.(int)}
+		myValue = &IntegerValue{Data: int(a.(int64))}
 	case []byte:
 		myValue = &BytesValue{Data: a.([]byte)}
 	case map[string]any:

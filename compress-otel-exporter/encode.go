@@ -576,14 +576,18 @@ func innerFreeValueEncode(value model.Value, stringPool *map[string]int, buf *by
 			return err
 		}
 		// 编码数组内元素的类型
-		if len(arrv) > 0 {
-			err := encodeInt(int(arrv[0].GetType()), buf)
+		// if len(arrv) > 0 {
+		// 	err := encodeInt(int(arrv[0].GetType()), buf)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
+		for i := 0; i < len(arrv); i++ {
+			err := encodeInt(int(arrv[i].GetType()), buf)
 			if err != nil {
 				return err
 			}
-		}
-		for i := 0; i < len(arrv); i++ {
-			err := innerFreeValueEncode(arrv[i], stringPool, buf)
+			err = innerFreeValueEncode(arrv[i], stringPool, buf)
 			if err != nil {
 				return err
 			}
