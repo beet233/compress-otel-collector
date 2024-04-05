@@ -363,7 +363,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				// 	}
 				// }
 				// 改成按字典序吧
-				for _, fieldName := range getSortedKeys(def.Fields) {
+				for _, fieldName := range getSortedKeys(myName, def.Fields) {
 					fieldDef := def.Fields[fieldName]
 					innerVal := objv[fieldName]
 					err := innerEncode(innerVal, fieldDef, myName+fieldName, status, valuePools, valueEncodePools, stringPool, tempBuffer)
@@ -689,7 +689,13 @@ func sortTreeMapByValue(inputMap *treemap.Map) []model.Value {
 	return sortedValues
 }
 
-func getSortedKeys(m map[string]*model.Definition) []string {
+// TODO: 理论上需要锁，但 naive 化
+var sortedKeysPool = make(map[string][]string)
+
+func getSortedKeys(myName string, m map[string]*model.Definition) []string {
+	if pooledKeys, exist := sortedKeysPool[myName]; exist {
+		return pooledKeys
+	}
 	// 数组默认长度为map长度,后面append时,不需要重新申请内存和拷贝,效率很高
 	j := 0
 	keys := make([]string, len(m))
@@ -698,5 +704,6 @@ func getSortedKeys(m map[string]*model.Definition) []string {
 		j++
 	}
 	sort.Strings(keys)
+	sortedKeysPool[myName] = keys
 	return keys
 }
