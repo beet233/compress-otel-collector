@@ -1,7 +1,10 @@
 package model
 
 import (
+	"encoding/binary"
+	"hash/fnv"
 	"log"
+	"math"
 	"sort"
 	"strings"
 )
@@ -22,6 +25,7 @@ const (
 // Value 是属性节点可能存储的值的接口类型
 type Value interface {
 	GetType() ValueType // 获取值的类型
+	Hash() int
 }
 
 // IntegerValue 是整数值类型
@@ -33,6 +37,22 @@ func (iv *IntegerValue) GetType() ValueType {
 	return Integer
 }
 
+func (iv *IntegerValue) Hash() int {
+	h := fnv.New32a()
+	// 写入整数的字节表示形式
+	h.Write([]byte{
+		byte(iv.Data >> 56),
+		byte(iv.Data >> 48),
+		byte(iv.Data >> 40),
+		byte(iv.Data >> 32),
+		byte(iv.Data >> 24),
+		byte(iv.Data >> 16),
+		byte(iv.Data >> 8),
+		byte(iv.Data),
+	})
+	return int(h.Sum32())
+}
+
 // StringValue 是字符串值类型
 type StringValue struct {
 	Data string
@@ -40,6 +60,12 @@ type StringValue struct {
 
 func (sv *StringValue) GetType() ValueType {
 	return String
+}
+
+func (sv *StringValue) Hash() int {
+	h := fnv.New32a()
+	h.Write([]byte(sv.Data))
+	return int(h.Sum32())
 }
 
 // BooleanValue 是字符串值类型
@@ -51,6 +77,21 @@ func (bv *BooleanValue) GetType() ValueType {
 	return Boolean
 }
 
+func boolToByte(v bool) byte {
+	if v {
+		return 1
+	}
+	return 0
+}
+
+func (bv *BooleanValue) Hash() int {
+	h := fnv.New32a()
+	h.Write([]byte{
+		boolToByte(bv.Data),
+	})
+	return int(h.Sum32())
+}
+
 // DoubleValue 是字符串值类型
 type DoubleValue struct {
 	Data float64
@@ -58,6 +99,22 @@ type DoubleValue struct {
 
 func (dv *DoubleValue) GetType() ValueType {
 	return Double
+}
+
+func (dv *DoubleValue) Hash() int {
+	h := fnv.New32a()
+	bs := math.Float64bits(dv.Data)
+	h.Write([]byte{
+		byte(bs >> 56),
+		byte(bs >> 48),
+		byte(bs >> 40),
+		byte(bs >> 32),
+		byte(bs >> 24),
+		byte(bs >> 16),
+		byte(bs >> 8),
+		byte(bs),
+	})
+	return int(h.Sum32())
 }
 
 // BytesValue 是字符串值类型
@@ -69,6 +126,12 @@ func (bv *BytesValue) GetType() ValueType {
 	return Bytes
 }
 
+func (bv *BytesValue) Hash() int {
+	h := fnv.New32a()
+	h.Write(bv.Data)
+	return int(h.Sum32())
+}
+
 // ObjectValue 是对象值类型
 type ObjectValue struct {
 	Data map[string]Value
@@ -78,6 +141,30 @@ func (ov *ObjectValue) GetType() ValueType {
 	return Object
 }
 
+func (ov *ObjectValue) Hash() int {
+	h := fnv.New32a()
+	keys := getSortedKeys(ov.Data)
+	for _, key := range keys {
+		// 先处理 key
+		h.Write([]byte(key))
+
+		// 然后处理 value
+		val := ov.Data[key]
+		hv := 0
+		if val != nil {
+			hv = ov.Data[key].Hash()
+		}
+
+		// 将 int 转换为 byte 切片
+		buf := make([]byte, 4) // 根据实际 int 类型的大小分配字节数，这里假设是 int32
+		binary.LittleEndian.PutUint32(buf, uint32(hv))
+
+		// 写入哈希器
+		h.Write(buf)
+	}
+	return int(h.Sum32())
+}
+
 // ArrayValue 是数组值类型
 type ArrayValue struct {
 	Data []Value
@@ -85,6 +172,21 @@ type ArrayValue struct {
 
 func (av *ArrayValue) GetType() ValueType {
 	return Array
+}
+
+func (av *ArrayValue) Hash() int {
+	h := fnv.New32a()
+	for _, elem := range av.Data {
+		hv := elem.Hash()
+
+		// 将 int 转换为 byte 切片
+		buf := make([]byte, 4) // 根据实际 int 类型的大小分配字节数，这里假设是 int32
+		binary.LittleEndian.PutUint32(buf, uint32(hv))
+
+		// 写入哈希器
+		h.Write(buf)
+	}
+	return int(h.Sum32())
 }
 
 func ValueComparator(a, b interface{}) int {

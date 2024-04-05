@@ -38,7 +38,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 	defer pprof.StopCPUProfile()
 	// 作为时间戳等状态的容器
 	status := make(map[string]any)
-	valuePools := make(map[string]*treemap.Map)
+	valuePools := make(map[string]*HashMap)
 	valueEncodePools := make(map[string]map[int]*bytes.Buffer)
 	stringPool := make(map[string]int)
 	dataBuffer := bytes.NewBuffer(make([]byte, 0, initialCompressedBufferSize))
@@ -116,7 +116,7 @@ func Encode(val model.Value, def *model.Definition, out io.Writer) (err error) {
 }
 
 // 传承层级 myName 作为 valuePools 的 key，如 "resourceSpans item resource attributes" 中间用一个空格
-func innerEncode(val model.Value, def *model.Definition, myName string, status *map[string]any, valuePools *map[string]*treemap.Map, valueEncodePools *map[string]map[int]*bytes.Buffer, stringPool *map[string]int, buf *bytes.Buffer) (err error) {
+func innerEncode(val model.Value, def *model.Definition, myName string, status *map[string]any, valuePools *map[string]*HashMap, valueEncodePools *map[string]map[int]*bytes.Buffer, stringPool *map[string]int, buf *bytes.Buffer) (err error) {
 
 	if def.Nullable {
 		if val == nil || isNullValue(val) {
@@ -183,7 +183,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			if _, ok := (*valuePools)[poolId]; !ok {
-				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
+				(*valuePools)[poolId] = NewHashMap()
 			}
 			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
@@ -217,7 +217,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			index, _ := (*valuePools)[poolId].Get(val)
-			err := encodeInt(index.(int), buf)
+			err := encodeInt(index, buf)
 			if err != nil {
 				return err
 			}
@@ -226,7 +226,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				if _, ok := (*valueEncodePools)[poolId]; !ok {
 					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index] = tempBuffer
 				// fmt.Println("add into encode pool", poolId, tempBuffer.Bytes(), index.(int))
 			}
 		} else {
@@ -267,7 +267,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			if _, ok := (*valuePools)[poolId]; !ok {
-				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
+				(*valuePools)[poolId] = NewHashMap()
 			}
 			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
@@ -298,7 +298,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			index, _ := (*valuePools)[poolId].Get(val)
-			err := encodeInt(index.(int), buf)
+			err := encodeInt(index, buf)
 			if err != nil {
 				return err
 			}
@@ -307,7 +307,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				if _, ok := (*valueEncodePools)[poolId]; !ok {
 					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index] = tempBuffer
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
@@ -326,7 +326,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			if _, ok := (*valuePools)[poolId]; !ok {
-				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
+				(*valuePools)[poolId] = NewHashMap()
 			}
 			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
@@ -384,7 +384,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			index, _ := (*valuePools)[poolId].Get(val)
-			err := encodeInt(index.(int), buf)
+			err := encodeInt(index, buf)
 			if err != nil {
 				return err
 			}
@@ -393,7 +393,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				if _, ok := (*valueEncodePools)[poolId]; !ok {
 					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index] = tempBuffer
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
@@ -412,7 +412,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			if _, ok := (*valuePools)[poolId]; !ok {
-				(*valuePools)[poolId] = treemap.NewWith(model.ValueComparator)
+				(*valuePools)[poolId] = NewHashMap()
 			}
 			myPool := (*valuePools)[poolId]
 			if _, ok := myPool.Get(val); !ok {
@@ -454,7 +454,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				poolId = def.SharePoolId
 			}
 			index, _ := (*valuePools)[poolId].Get(val)
-			err := encodeInt(index.(int), buf)
+			err := encodeInt(index, buf)
 			if err != nil {
 				return err
 			}
@@ -463,7 +463,7 @@ func innerEncode(val model.Value, def *model.Definition, myName string, status *
 				if _, ok := (*valueEncodePools)[poolId]; !ok {
 					(*valueEncodePools)[poolId] = make(map[int]*bytes.Buffer)
 				}
-				(*valueEncodePools)[poolId][index.(int)] = tempBuffer
+				(*valueEncodePools)[poolId][index] = tempBuffer
 			}
 		} else {
 			_, err := buf.Write(tempBuffer.Bytes())
