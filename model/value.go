@@ -258,28 +258,29 @@ func ValueComparator(a, b interface{}) int {
 		if len(objv1.Data) != len(objv2.Data) {
 			return len(objv1.Data) - len(objv2.Data)
 		}
-		keys1 := getSortedKeys(objv1.Data)
-		keys2 := getSortedKeys(objv2.Data)
-		for i := 0; i < len(keys1); i++ {
-			comp := strings.Compare(keys1[i], keys2[i])
-			if comp != 0 {
-				return comp
-			}
-			comp = ValueComparator(objv1.Data[keys1[i]], objv2.Data[keys2[i]])
-			if comp != 0 {
-				return comp
-			}
-		}
-		// for key, value1 := range objv1.Data {
-		// 	if value2, exist := objv2.Data[key]; exist {
-		// 		comp := ValueComparator(value1, value2)
-		// 		if comp != 0 {
-		// 			return comp
-		// 		}
-		// 	} else {
-		// 		return -1
+		// keys1 := getSortedKeys(objv1.Data)
+		// keys2 := getSortedKeys(objv2.Data)
+		// for i := 0; i < len(keys1); i++ {
+		// 	comp := strings.Compare(keys1[i], keys2[i])
+		// 	if comp != 0 {
+		// 		return comp
+		// 	}
+		// 	comp = ValueComparator(objv1.Data[keys1[i]], objv2.Data[keys2[i]])
+		// 	if comp != 0 {
+		// 		return comp
 		// 	}
 		// }
+		// 此方法不满足严格弱排序要求，只适合比较“是否相等”，不适合用于红黑树等有序容器。但是速度比较快
+		for key, value1 := range objv1.Data {
+			if value2, exist := objv2.Data[key]; exist {
+				comp := ValueComparator(value1, value2)
+				if comp != 0 {
+					return comp
+				}
+			} else {
+				return -1
+			}
+		}
 		return 0
 	case Array:
 		av1 := v1.(*ArrayValue)

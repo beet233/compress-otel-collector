@@ -1,0 +1,241 @@
+{
+  "Type": 5,
+  "Nullable": false,
+  "Pooled": false,
+  "Fields": {
+    "resourceSpans": {
+      "Type": 6,
+      "Nullable": true,
+      "Pooled": false,
+      "ItemDefinition": {
+        "Type": 5,
+        "Nullable": false,
+        "Pooled": false,
+        "Fields": {
+          "resource": {
+            "Type": 5,
+            "Nullable": false,
+            "Pooled": true,
+            "Fields": {
+              "attributes": {
+                "Type": 5,
+                "Nullable": true,
+                "Pooled": true
+              },
+              "droppedAttributesCount": {
+                "Type": 0,
+                "Nullable": true
+              }
+            }
+          },
+          "scopeSpans": {
+            "Type": 6,
+            "Nullable": true,
+            "Pooled": false,
+            "ItemDefinition": {
+              "Type": 5,
+              "Nullable": false,
+              "Pooled": false,
+              "Fields": {
+                "scope": {
+                  "Type": 5,
+                  "Nullable": false,
+                  "Pooled": true,
+                  "Fields": {
+                    "name": {
+                      "Type": 4,
+                      "Nullable": true,
+                      "Pooled": true
+                    },
+                    "version": {
+                      "Type": 4,
+                      "Nullable": true,
+                      "Pooled": true
+                    },
+                    "attributes": {
+                      "Type": 5,
+                      "Nullable": true,
+                      "Pooled": true
+                    },
+                    "droppedAttributesCount": {
+                      "Type": 0,
+                      "Nullable": true
+                    }
+                  }
+                },
+                "spans": {
+                  "Type": 6,
+                  "Nullable": true,
+                  "Pooled": false,
+                  "ItemDefinition": {
+                    "Type": 5,
+                    "Nullable": false,
+                    "Pooled": false,
+                    "Fields": {
+                      "traceId": {
+                        "Type": 3,
+                        "Nullable": false,
+                        "SharePooled": true,
+                        "SharePoolId": "traceId"
+                      },
+                      "spanId": {
+                        "Type": 3,
+                        "Nullable": true,
+                        "SharePooled": true,
+                        "SharePoolId": "spanId"
+                      },
+                      "traceState": {
+                        "Type": 4,
+                        "Nullable": true,
+                        "SharePooled": true,
+                        "SharePoolId": "traceState"
+                      },
+                      "parentSpanId": {
+                        "Type": 3,
+                        "Nullable": true,
+                        "SharePooled": true,
+                        "SharePoolId": "spanId"
+                      },
+                      "name": {
+                        "Type": 4,
+                        "Nullable": false,
+                        "Pooled": true
+                      },
+                      "kind": {
+                        "Type": 0,
+                        "Nullable": true
+                      },
+                      "startTimeUnixNano": {
+                        "Type": 0,
+                        "Nullable": false,
+                        "DiffEncode": true
+                      },
+                      "endTimeUnixNano": {
+                        "Type": 0,
+                        "Nullable": false,
+                        "DiffEncode": true
+                      },
+                      "attributes": {
+                        "Type": 5,
+                        "Nullable": true,
+                        "Pooled": true
+                      },
+                      "droppedAttributesCount": {
+                        "Type": 0,
+                        "Nullable": true
+                      },
+                      "events": {
+                        "Type": 6,
+                        "Nullable": true,
+                        "Pooled": false,
+                        "ItemDefinition": {
+                          "Type": 5,
+                          "Nullable": false,
+                          "Pooled": false,
+                          "Fields": {
+                            "timeUnixNano": {
+                              "Type": 0,
+                              "Nullable": true,
+                              "DiffEncode": true
+                            },
+                            "name": {
+                              "Type": 4,
+                              "Nullable": true,
+                              "Pooled": true
+                            },
+                            "attributes": {
+                              "Type": 5,
+                              "Nullable": true,
+                              "Pooled": true
+                            },
+                            "droppedAttributesCount": {
+                              "Type": 0,
+                              "Nullable": true
+                            }
+                          }
+                        }
+                      },
+                      "droppedEventsCount": {
+                        "Type": 0,
+                        "Nullable": true
+                      },
+                      "links": {
+                        "Type": 6,
+                        "Nullable": true,
+                        "Pooled": false,
+                        "ItemDefinition": {
+                          "Type": 5,
+                          "Nullable": false,
+                          "Pooled": true,
+                          "Fields": {
+                            "traceId": {
+                              "Type": 3,
+                              "Nullable": false,
+                              "SharePooled": true,
+                              "SharePoolId": "traceId"
+                            },
+                            "spanId": {
+                              "Type": 3,
+                              "Nullable": true,
+                              "SharePooled": true,
+                              "SharePoolId": "spanId"
+                            },
+                            "traceState": {
+                              "Type": 4,
+                              "Nullable": true,
+                              "SharePooled": true,
+                              "SharePoolId": "traceState"
+                            },
+                            "attributes": {
+                              "Type": 5,
+                              "Nullable": true,
+                              "Pooled": true
+                            },
+                            "droppedAttributesCount": {
+                              "Type": 0,
+                              "Nullable": true
+                            }
+                          }
+                        }
+                      },
+                      "droppedLinksCount": {
+                        "Type": 0,
+                        "Nullable": true
+                      },
+                      "status": {
+                        "Type": 5,
+                        "Nullable": false,
+                        "Pooled": true,
+                        "Fields": {
+                          "message": {
+                            "Type": 4,
+                            "Nullable": true,
+                            "Pooled": true
+                          },
+                          "code": {
+                            "Type": 0,
+                            "Nullable": false
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "schemaUrl": {
+                  "Type": 4,
+                  "Nullable": true,
+                  "Pooled": true
+                }
+              }
+            }
+          },
+          "schemaUrl": {
+            "Type": 4,
+            "Nullable": true,
+            "Pooled": true
+          }
+        }
+      }
+    }
+  }
+}
